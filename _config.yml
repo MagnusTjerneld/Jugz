@@ -7,3 +7,4 @@ exclude:
   - generate-icons.js
   - check.js
   - smoke.js
+  - mockups

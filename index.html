@@ -46,8 +46,48 @@
     --amber:#FFB458;       /* stars and hint */
     --gold:#FFCE7A;        /* goal reached */
     --mint:#8FE3A8;        /* "Easy" badge */
+    --hard:#FF8A93;        /* "Hard" badge */
+    --done:#6FE7D4;        /* cleared level, in the picker */
+    --glass:rgba(240,238,255,.60);  /* vessel outline */
+    --tint:rgba(243,239,255,.07);   /* glass body */
+    --etch:rgba(243,239,255,.55);   /* capacity engraved on the vessel */
+    --on-primary:#0B2B26;  /* text on the primary button */
     --panel:rgba(255,255,255,.07);
     --panel-edge:rgba(255,255,255,.14);
+    --card:rgba(16,64,76,.92);
+    --scrim:rgba(4,22,28,.60);
+  }
+  /* The Winez skin: red wine in stemware, measured in U.
+     Deliberately not in a menu - three taps on the logo droplet reach it
+     (see the tap counter at the bottom of the script). It is the same set
+     of properties redefined, so the token names still say "water": a skin
+     is a second block, not a rename across the file. --on-primary is the
+     one value a straight swap cannot cover, because dark text works on
+     turquoise and fails on ruby. */
+  html[data-skin="wine"]{
+    --night:#150610;
+    --indigo:#2C0D1D;
+    --horizon:#63213F;
+    --water-hi:#B32744;
+    --water-lo:#59091F;
+    --foam:#F0A8B8;
+    --chalk:#F9EDF1;
+    --haze:#BE9AA8;
+    --amber:#FFC46A;
+    --gold:#FFD79A;
+    --mint:#A9D6AE;
+    --hard:#FF8E63;
+    /* Ruby on burgundy is the same hue as the card behind it, so a cleared
+       level borrows the meniscus rose instead of the liquid colour. */
+    --done:#F0A8B8;
+    --glass:rgba(255,244,248,.55);
+    --tint:rgba(255,240,246,.06);
+    --etch:rgba(255,240,246,.55);
+    --on-primary:#FFF0F4;
+    --panel:rgba(255,255,255,.06);
+    --panel-edge:rgba(255,235,242,.13);
+    --card:rgba(70,12,30,.94);
+    --scrim:rgba(24,4,12,.62);
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
   html,body{height:100%}
@@ -63,7 +103,10 @@
 
 
   header{width:100%;max-width:520px;display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
-  .wordmark{display:flex;align-items:baseline;gap:6px}
+  .wordmark{
+    display:flex;align-items:baseline;gap:6px;
+    user-select:none;-webkit-user-select:none;touch-action:manipulation;
+  }
   .wordmark h1{
     font-weight:700;font-size:1.7rem;letter-spacing:.01em;
     background:linear-gradient(180deg,var(--foam),var(--water-hi));
@@ -73,12 +116,22 @@
     width:.55rem;height:.55rem;border-radius:0 50% 50% 50%;
     transform:rotate(45deg) translateY(-4px);
     background:linear-gradient(135deg,var(--foam),var(--water-hi));
+    transition:transform .5s cubic-bezier(.5,1.6,.5,1);
   }
+  /* The droplet tips over on the way into the wine skin: it pours,
+     it does not toggle. */
+  html[data-skin="wine"] .droplet{transform:rotate(225deg) translateY(-4px)}
+  /* Lighting up rather than moving: the droplet's transform already
+     carries the tipped state, and a keyframe on it would snap the skin. */
+  .droplet.ping{animation:ping .3s ease}
+  @keyframes ping{50%{filter:brightness(1.8) drop-shadow(0 0 7px var(--foam))}}
   .lvltag{font-size:.82rem;color:var(--haze);font-weight:500}
   .diff{display:inline-block;padding:2px 9px;border-radius:99px;font-size:.68rem;font-weight:600;margin-left:6px;vertical-align:1px}
-  .diff.easy{background:rgba(123,232,176,.16);color:var(--mint)}
-  .diff.mid{background:rgba(255,180,88,.16);color:var(--amber)}
-  .diff.hard{background:rgba(255,138,147,.16);color:#FF8A93}
+  /* The rgba line is the fallback for browsers without color-mix; without
+     it a skin swap would leave the badge tinted for the wrong liquid. */
+  .diff.easy{background:rgba(123,232,176,.16);background:color-mix(in srgb,var(--mint) 16%,transparent);color:var(--mint)}
+  .diff.mid{background:rgba(255,180,88,.16);background:color-mix(in srgb,var(--amber) 16%,transparent);color:var(--amber)}
+  .diff.hard{background:rgba(255,138,147,.16);background:color-mix(in srgb,var(--hard) 16%,transparent);color:var(--hard)}
 
   .goal{
     width:100%;max-width:520px;
@@ -102,13 +155,17 @@
   .jug:active{transform:scale(.97)}
   .jug .amt{font-weight:700;font-size:1.15rem;color:var(--chalk)}
   .jug svg{overflow:visible;filter:drop-shadow(0 18px 16px rgba(10,6,30,.55))}
-  .jug .glassbody{fill:none;stroke:rgba(240,238,255,.6);stroke-width:2.5;transition:stroke .2s,filter .2s}
-  .jug .glasshandle{fill:none;stroke:rgba(240,238,255,.55);stroke-width:7;stroke-linecap:round;transition:stroke .2s}
-  .jug.sel .glassbody{stroke:#FFFFFF;stroke-width:3.5;filter:drop-shadow(0 0 10px rgba(216,255,246,.75))}
-  .jug.sel .glasshandle{stroke:#FFFFFF}
+  .jug .glassbody{fill:none;stroke:var(--glass);stroke-width:2.5;transition:stroke .2s,filter .2s}
+  .jug .glasshandle{fill:none;stroke:var(--glass);stroke-width:7;stroke-linecap:round;transition:stroke .2s}
+  /* Stemware only: the stem is a closed shape so both edges are drawn,
+     and the far half of the rim is the cue that reads as an opening. */
+  .jug .stemshape{fill:var(--tint);stroke:var(--glass);stroke-width:2.2;stroke-linejoin:round;transition:stroke .2s}
+  .jug .rimback{fill:none;stroke:var(--glass);stroke-opacity:.45;stroke-width:2;transition:stroke .2s}
+  .jug.sel .glassbody{stroke:#FFFFFF;stroke-width:3.5;filter:drop-shadow(0 0 10px rgba(216,255,246,.75));filter:drop-shadow(0 0 10px color-mix(in srgb,var(--foam) 75%,transparent))}
+  .jug.sel .glasshandle,.jug.sel .stemshape,.jug.sel .rimback{stroke:#FFFFFF}
   .jug.hintflash .glassbody{stroke:var(--amber);stroke-width:3.5;filter:drop-shadow(0 0 10px rgba(255,180,88,.8))}
-  .jug.hintflash .glasshandle{stroke:var(--amber)}
-  .jug .etch{fill:rgba(243,239,255,.55);font-family:'Fredoka',sans-serif;font-weight:600;pointer-events:none}
+  .jug.hintflash .glasshandle,.jug.hintflash .stemshape,.jug.hintflash .rimback{stroke:var(--amber)}
+  .jug .etch{fill:var(--etch);font-family:'Fredoka',sans-serif;font-weight:600;pointer-events:none}
   .jug.deny{animation:shake .3s}
   @keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
   .waterrect{transition:y .5s cubic-bezier(.4,0,.2,1),height .5s cubic-bezier(.4,0,.2,1)}
@@ -118,6 +175,16 @@
   .wavedrift{animation:drift var(--wd,4.5s) linear infinite}
   .wavedrift.rev{animation-duration:calc(var(--wd,4.5s)*1.7);animation-direction:reverse}
   @keyframes drift{to{transform:translateX(calc(-1*var(--lam)))}}
+  /* Wine legs, the tears that run back down the glass wall. They stand in
+     for the bubbles, which read as fizz - wrong for a still red. They sit
+     inside the surface group, so they always end at the wine line. */
+  .leg{animation:legfall var(--lg,8s) linear var(--ld,0s) infinite}
+  @keyframes legfall{
+    0%{transform:translateY(calc(-1*var(--ls)));opacity:0}
+    14%{opacity:.5}
+    80%{opacity:.18}
+    100%{transform:translateY(0);opacity:0}
+  }
 
   .controls{width:100%;max-width:520px;display:flex;gap:8px;margin-top:8px}
   button{
@@ -131,19 +198,19 @@
   button:active{transform:scale(.96)}
   button.primary{
     background:linear-gradient(180deg,var(--water-hi),var(--water-lo));
-    color:#0B2B26;border-color:transparent;font-weight:700;
+    color:var(--on-primary);border-color:transparent;font-weight:700;
   }
   button:disabled{opacity:.35;pointer-events:none}
 
   .overlay{
-    position:fixed;inset:0;background:rgba(4,22,28,.6);
+    position:fixed;inset:0;background:var(--scrim);
     display:flex;align-items:center;justify-content:center;
     opacity:0;pointer-events:none;transition:opacity .25s;
     backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:10;
   }
   .overlay.show{opacity:1;pointer-events:auto}
   .win{
-    background:rgba(16,64,76,.92);
+    background:var(--card);
     border:1px solid var(--panel-edge);
     backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
     border-radius:22px;padding:26px 22px;
@@ -175,7 +242,10 @@
     font-weight:600;font-size:1rem;cursor:pointer;color:var(--chalk);
   }
   .cell .cstars{font-size:.58rem;color:var(--amber);letter-spacing:1px;margin-top:2px;height:.8em}
-  .cell.done{background:rgba(111,231,212,.16);border-color:rgba(111,231,212,.45)}
+  .cell.done{
+    background:rgba(111,231,212,.16);background:color-mix(in srgb,var(--done) 16%,transparent);
+    border-color:rgba(111,231,212,.45);border-color:color-mix(in srgb,var(--done) 45%,transparent);
+  }
   .cell.cur{outline:2px solid var(--foam)}
   .cell.locked{opacity:.3;pointer-events:none}
 
@@ -184,7 +254,7 @@
   .update{
     display:flex;align-items:center;gap:12px;align-self:center;
     margin-top:10px;
-    background:rgba(16,64,76,.92);border:1px solid var(--panel-edge);
+    background:var(--card);border:1px solid var(--panel-edge);
     backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
     border-radius:99px;padding:9px 9px 9px 18px;
     font-size:.85rem;font-weight:500;color:var(--chalk);
@@ -192,6 +262,19 @@
   }
   .update[hidden]{display:none}
   .update button{flex:0 0 auto;padding:8px 16px;border-radius:99px;font-size:.82rem}
+
+  /* The skin change arrives as one gesture: a circle of the incoming
+     backdrop grows out of the droplet, the skin swaps underneath it, then
+     it fades. Cheaper and steadier than cross-fading every property. */
+  .wipe{
+    position:fixed;inset:0;z-index:9;pointer-events:none;
+    clip-path:circle(0% at var(--ox,80%) var(--oy,4%));
+  }
+  .wipe[hidden]{display:none}
+  .wipe.to-wine{background:radial-gradient(130% 90% at 50% -10%,#63213F 0%,#2C0D1D 45%,#150610 100%)}
+  .wipe.to-water{background:radial-gradient(130% 90% at 50% -10%,#4A3A78 0%,#241E44 45%,#171331 100%)}
+  .wipe.go{transition:clip-path .62s cubic-bezier(.4,0,.2,1);clip-path:circle(150% at var(--ox,80%) var(--oy,4%))}
+  .wipe.fade{transition:opacity .45s ease;opacity:0}
 
   @media (min-width:900px){
     .stage{max-width:760px}
@@ -207,12 +290,12 @@
 <body>
 
 <header>
-  <div class="wordmark"><h1>Jugz</h1><div class="droplet"></div></div>
+  <div class="wordmark" id="wordmark"><h1 id="brand">Jugz</h1><div class="droplet" id="droplet"></div></div>
   <div class="lvltag"><span id="lvlname"></span><span id="diffbadge"></span></div>
 </header>
 
 <div class="goal">
-  <div class="g-text">Measure out exactly <b id="goalL"></b> in any jug</div>
+  <div class="g-text">Measure out exactly <b id="goalL"></b> in any <span id="vesselWord">jug</span></div>
   <div class="moves">Pours<br><b id="moveCount">0</b><span id="optCount"></span></div>
 </div>
 
@@ -247,6 +330,8 @@
     <button id="btnCloseLvls">Close</button>
   </div>
 </div>
+
+<div class="wipe" id="wipe" hidden></div>
 
 <script src="levels.js"></script>
 <script>
@@ -294,7 +379,7 @@ function solveFrom(caps,state,goal){
 
 /* ================= Persistence ================= */
 const SAVE_KEY='jugz_v1';
-let save={current:0,stars:{}};
+let save={current:0,stars:{},skin:'water'};
 try{
   const s=JSON.parse(localStorage.getItem(SAVE_KEY));
   if(s&&typeof s==='object'&&s.stars)save=s;
@@ -332,6 +417,18 @@ async function askPersist(){
   }catch(e){}
 }
 
+/* ================= Skins =================
+   Two vessels, one game. Everything skin-dependent is listed here: the
+   colours live in CSS under html[data-skin], the words and the drawing
+   live below. Nothing about the puzzle, the level bank or the saved stars
+   changes with the skin, so switching mid-level is safe. */
+const UNIT={water:'L',wine:'U'};
+const VESSEL={water:'jug',wine:'glass'};
+const VERB={water:'Solved',wine:'Poured'};
+const BRAND={water:'Jugz',wine:'Winez'};
+const THEME={water:'#241E44',wine:'#2C0D1D'};
+let skin=(save.skin==='wine')?'wine':'water';
+
 /* ================= Game state ================= */
 let li=0, caps=[], state=[], history=[], moves=0, opt=0, goal=0, sel=-1, busy=false;
 const stage=document.getElementById('stage');
@@ -345,6 +442,11 @@ function diffLabel(m){
 
 /* The optimal number of pours is revealed only once the level has been
    cleared. Before that, the length of the solution would be a giveaway. */
+function labelGoal(){
+  document.getElementById('goalL').textContent=goal+' '+UNIT[skin];
+  document.getElementById('vesselWord').textContent=VESSEL[skin];
+}
+
 function showOpt(){
   const solved=(save.stars[li]||0)>0;
   document.getElementById('optCount').textContent=solved?(' / '+opt):'';
@@ -359,7 +461,7 @@ function loadLevel(i){
   document.getElementById('lvlname').textContent='Level '+(li+1)+' / '+LEVELS.length;
   const[dl,dc]=diffLabel(opt);
   document.getElementById('diffbadge').innerHTML='<span class="diff '+dc+'">'+dl+'</span>';
-  document.getElementById('goalL').textContent=goal+' L';
+  labelGoal();
   showOpt();
   buildJugs();render();
   document.getElementById('overlay').classList.remove('show');
@@ -403,7 +505,10 @@ function jugSVG(idx,cap){
     bubbles+='<circle class="waterbub" cx="'+cx+'" cy="'+(H-14)+'" r="'+r
       +'" fill="rgba(255,255,255,.4)" style="--bh:'+H+'px;--bd:'+(4.5+k*1.6+idx*0.7).toFixed(1)+'s;--bdl:'+(k*1.3).toFixed(1)+'s"/>';
   }
-  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+  /* data-top/data-bot is the band the liquid moves through. The jug is
+     filled to the brim; a wine glass is not (see glassSVG), so render()
+     reads it off the SVG instead of hardcoding it. */
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" data-top="20" data-bot="${H-10}">
     <defs>
       <clipPath id="clip${idx}"><path d="${path}"/></clipPath>
       <clipPath id="wclip${idx}"><rect class="waterrect" id="wrect${idx}" x="0" y="${H}" width="${W}" height="0"/></clipPath>
@@ -413,7 +518,7 @@ function jugSVG(idx,cap){
       </linearGradient>
     </defs>
     <path class="glasshandle" d="${handle}"/>
-    <path d="${path}" fill="rgba(243,239,255,.07)"/>
+    <path d="${path}" fill="var(--tint)"/>
     <rect class="waterrect" id="water${idx}" clip-path="url(#clip${idx})"
       x="0" y="${H}" width="${W}" height="0" fill="url(#wg${idx})"/>
     <g clip-path="url(#clip${idx})"><g clip-path="url(#wclip${idx})">${bubbles}</g></g>
@@ -430,8 +535,99 @@ function jugSVG(idx,cap){
     <path d="M ${bx+12} 32 Q ${bx+6} ${Math.round(H*0.55)} ${bx+13} ${H-24}"
       fill="none" stroke="rgba(255,255,255,.45)" stroke-width="3" stroke-linecap="round"/>
     <path class="glassbody" d="${path}"/>
-    <text class="etch" x="${bx+bodyW/2}" y="${Math.round(H*0.60)}" text-anchor="middle" font-size="${fs}">${cap} L</text>
+    <text class="etch" x="${bx+bodyW/2}" y="${Math.round(H*0.60)}" text-anchor="middle" font-size="${fs}">${cap} ${UNIT.water}</text>
   </svg>`;
+}
+
+/* ---- Winez: stemware ----
+   Capacity drives bowl height, bowl width, belly bulge and stem length at
+   once, so the three glasses of a level differ by silhouette and not only
+   by size: the smallest reads as a port tulip, the largest as a burgundy
+   balloon. Element ids match jugSVG exactly, so render() is skin-blind. */
+function glassGeom(cap,maxCap){
+  const r=cap/maxCap;
+  const rimY=16;                          /* centre of the rim ellipse   */
+  const ry=Math.round(5+r*3);             /* rim ellipse, minor radius   */
+  const bowlH=Math.round(60+r*54);
+  const bowlW=Math.round(52+r*46);
+  const stemH=Math.round(46+r*54);
+  const rimR=bowlW/2;
+  const belly=rimR*(1+r*0.26);            /* tulip -> balloon            */
+  const footRx=belly*0.78;
+  const W=Math.ceil(2*belly+20);
+  const cx=Math.round(W/2);
+  const by=rimY+bowlH;                    /* bowl bottom = stem junction */
+  const footY=by+stemH;
+  return {rimY,ry,bowlH,bowlW,stemH,rimR,belly,footRx,W,cx,by,footY,H:footY+12};
+}
+function glassSVG(idx,cap){
+  const g=glassGeom(cap,Math.max(...caps));
+  const n=4;                              /* half-width at the neck      */
+  const bowl=`M ${g.cx-g.rimR} ${g.rimY}
+    C ${(g.cx-g.belly).toFixed(1)} ${(g.rimY+g.bowlH*0.36).toFixed(1)}
+      ${(g.cx-g.belly*0.90).toFixed(1)} ${(g.rimY+g.bowlH*0.74).toFixed(1)}
+      ${g.cx-n} ${g.by}
+    L ${g.cx+n} ${g.by}
+    C ${(g.cx+g.belly*0.90).toFixed(1)} ${(g.rimY+g.bowlH*0.74).toFixed(1)}
+      ${(g.cx+g.belly).toFixed(1)} ${(g.rimY+g.bowlH*0.36).toFixed(1)}
+      ${g.cx+g.rimR} ${g.rimY}
+    A ${g.rimR} ${g.ry} 0 0 1 ${g.cx-g.rimR} ${g.rimY} Z`;
+  /* The near half of the rim closes the bowl above; the far half is drawn
+     separately and faintly. Without it the shape reads as a cone. */
+  const rimBack=`M ${g.cx-g.rimR} ${g.rimY} A ${g.rimR} ${g.ry} 0 0 1 ${g.cx+g.rimR} ${g.rimY}`;
+  const stem=`M ${g.cx-n} ${g.by}
+    C ${g.cx-3.6} ${(g.by+g.stemH*0.5).toFixed(1)} ${g.cx-3.8} ${g.footY-18} ${g.cx-8} ${g.footY-2}
+    L ${g.cx+8} ${g.footY-2}
+    C ${g.cx+3.8} ${g.footY-18} ${g.cx+3.6} ${(g.by+g.stemH*0.5).toFixed(1)} ${g.cx+n} ${g.by} Z`;
+  const shine=`M ${(g.cx-g.rimR*0.60).toFixed(1)} ${g.rimY+12}
+    Q ${(g.cx-g.belly*0.88).toFixed(1)} ${(g.rimY+g.bowlH*0.48).toFixed(1)}
+      ${(g.cx-g.rimR*0.34).toFixed(1)} ${g.by-10}`;
+  const fs=Math.max(14,Math.round(g.bowlW*0.24));
+  const lam=Math.max(24,Math.round(g.bowlW/2));
+  const w2=Math.round(2*g.belly)+2*lam;
+  let legs='';
+  for(let k=0;k<3;k++){
+    const lx=(g.cx-g.rimR*0.55+(g.rimR*1.1/2)*k+((idx*7+k*11)%9)).toFixed(1);
+    const ls=Math.round(g.bowlH*0.30+k*9+(idx%3)*5);
+    legs+='<line class="leg" x1="'+lx+'" y1="0" x2="'+lx+'" y2="13" stroke="var(--foam)"'
+      +' stroke-width="2" stroke-linecap="round" style="--ls:'+ls+'px;--lg:'
+      +(7+k*1.1+idx*0.6).toFixed(1)+'s;--ld:'+(k*2.4).toFixed(1)+'s"/>';
+  }
+  /* The band stops at the bottom of the bowl: the jug's band would pour
+     wine down into the stem. */
+  return `<svg width="${g.W}" height="${g.H}" viewBox="0 0 ${g.W} ${g.H}" data-top="${g.rimY+2}" data-bot="${g.by-3}">
+    <defs>
+      <clipPath id="clip${idx}"><path d="${bowl}"/></clipPath>
+      <clipPath id="wclip${idx}"><rect class="waterrect" id="wrect${idx}" x="0" y="${g.H}" width="${g.W}" height="0"/></clipPath>
+      <linearGradient id="wg${idx}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="var(--water-hi)"/>
+        <stop offset="1" stop-color="var(--water-lo)"/>
+      </linearGradient>
+    </defs>
+    <ellipse cx="${g.cx}" cy="${g.footY}" rx="${g.footRx.toFixed(1)}" ry="6" fill="var(--tint)" stroke="var(--glass)" stroke-width="2.2"/>
+    <path class="stemshape" d="${stem}"/>
+    <path d="${bowl}" fill="var(--tint)"/>
+    <rect class="waterrect" id="water${idx}" clip-path="url(#clip${idx})"
+      x="0" y="${g.H}" width="${g.W}" height="0" fill="url(#wg${idx})"/>
+    <g clip-path="url(#clip${idx})">
+      <g class="surfg" id="surfg${idx}" style="transform:translateY(${g.H}px);opacity:0">
+        <g class="wavedrift rev" style="--lam:${lam}px;--wd:5.2s;transform-origin:0 0">
+          <path d="${wavePath(w2,lam,2)}" fill="var(--water-hi)" fill-opacity=".5" transform="translate(-${lam} 2)"/>
+        </g>
+        <g class="wavedrift" style="--lam:${lam}px;--wd:4.2s">
+          <path d="${wavePath(w2,lam,2.6)}" fill="var(--foam)" fill-opacity=".85" transform="translate(-${lam} 0)"/>
+        </g>
+        ${legs}
+      </g>
+    </g>
+    <path d="${shine}" fill="none" stroke="rgba(255,255,255,.40)" stroke-width="3" stroke-linecap="round"/>
+    <path class="rimback" d="${rimBack}"/>
+    <path class="glassbody" d="${bowl}"/>
+    <text class="etch" x="${g.cx}" y="${Math.round(g.rimY+g.bowlH*0.62)}" text-anchor="middle" font-size="${fs}">${cap} ${UNIT.wine}</text>
+  </svg>`;
+}
+function vesselSVG(idx,cap){
+  return (skin==='wine')?glassSVG(idx,cap):jugSVG(idx,cap);
 }
 
 function buildJugs(){
@@ -441,7 +637,7 @@ function buildJugs(){
   caps.forEach((cap,i)=>{
     const d=document.createElement('div');
     d.className='jug';d.id='jug'+i;
-    d.innerHTML=jugSVG(i,cap)+`<div class="amt" id="amt${i}"></div>`;
+    d.innerHTML=vesselSVG(i,cap)+`<div class="amt" id="amt${i}"></div>`;
     d.addEventListener('click',()=>tap(i));
     shelf.appendChild(d);
   });
@@ -467,8 +663,7 @@ window.addEventListener('resize',fitJugs);
 function render(){
   caps.forEach((cap,i)=>{
     const svg=document.querySelector('#jug'+i+' svg');
-    const H=+svg.getAttribute('height');
-    const topY=20,botY=H-10,usable=botY-topY;
+    const topY=+svg.dataset.top,botY=+svg.dataset.bot,usable=botY-topY;
     const h=(state[i]/cap)*usable;
     const y=botY-h;
     const w=document.getElementById('water'+i);
@@ -480,7 +675,7 @@ function render(){
     const sg=document.getElementById('surfg'+i);
     sg.style.transform='translateY('+y+'px)';
     sg.style.opacity=state[i]>0?1:0;
-    document.getElementById('amt'+i).textContent=state[i]+' L';
+    document.getElementById('amt'+i).textContent=state[i]+' '+UNIT[skin];
     const j=document.getElementById('jug'+i);
     j.classList.toggle('sel',sel===i);
     document.getElementById('amt'+i).style.color=(state[i]===goal)?'var(--gold)':'var(--chalk)';
@@ -534,8 +729,8 @@ function checkWin(){
   document.getElementById('stars').innerHTML=
     '<i>★</i>'.repeat(n)+'<i class="off">★</i>'.repeat(3-n);
   document.getElementById('winText').textContent=
-    moves===opt?'Perfect! Solved in the optimal '+opt+' pours.':
-    'Solved in '+moves+' pours. The optimum is '+opt+'.';
+    moves===opt?'Perfect! '+VERB[skin]+' in the optimal '+opt+' pours.':
+    VERB[skin]+' in '+moves+' pours. The optimum is '+opt+'.';
   document.getElementById('btnNext').style.display=(li<LEVELS.length-1)?'':'none';
   document.getElementById('overlay').classList.add('show');
 }
@@ -563,6 +758,75 @@ document.getElementById('btnCloseLvls').onclick=()=>document.getElementById('lvl
 document.getElementById('btnNext').onclick=()=>loadLevel(li+1);
 document.getElementById('btnReplay').onclick=()=>loadLevel(li);
 
+/* ================= Switching skin =================
+   Hidden on purpose: three taps on the logo inside 1.2 s. One tap would
+   fire by accident, and an entry in the level screen would give the joke
+   away before anyone found it. */
+function paintSkin(){
+  document.documentElement.dataset.skin=skin;
+  document.getElementById('brand').textContent=BRAND[skin];
+  const tc=document.querySelector('meta[name="theme-color"]');
+  if(tc)tc.setAttribute('content',THEME[skin]);
+}
+function applySkin(next){
+  skin=next;
+  save.skin=skin;persist();
+  paintSkin();labelGoal();
+  buildJugs();render();     /* the two skins share ids, not geometry */
+}
+
+const REDUCED=window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+let swapping=false;
+function swapSkin(){
+  if(swapping||busy)return false;
+  const next=(skin==='wine')?'water':'wine';
+  if(REDUCED){applySkin(next);return true;}
+  swapping=true;
+  /* A circle of the incoming backdrop grows out of the droplet, the skin
+     changes underneath it, then it fades off. */
+  const wipe=document.getElementById('wipe');
+  const d=document.getElementById('droplet').getBoundingClientRect();
+  wipe.style.setProperty('--ox',Math.round(100*(d.left+d.width/2)/window.innerWidth)+'%');
+  wipe.style.setProperty('--oy',Math.round(100*(d.top+d.height/2)/window.innerHeight)+'%');
+  wipe.className='wipe '+(next==='wine'?'to-wine':'to-water');
+  wipe.hidden=false;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>wipe.classList.add('go')));
+  setTimeout(()=>{
+    applySkin(next);
+    wipe.classList.add('fade');
+    setTimeout(()=>{wipe.hidden=true;wipe.className='wipe';swapping=false;},460);
+  },650);
+  return true;
+}
+
+const TAP_WINDOW=1500;
+let taps=[];
+function countTap(){
+  const now=performance.now();
+  taps=taps.filter(t=>now-t<TAP_WINDOW);
+  taps.push(now);
+  /* From the second tap on the droplet lights up. One stray tap does
+     nothing at all; a repeat says "keep going". Without that the switch is
+     not merely secret, it is undiscoverable. */
+  if(taps.length>=2){
+    const d=document.getElementById('droplet');
+    d.classList.remove('ping');void d.offsetWidth;d.classList.add('ping');
+  }
+  /* Only clear the run once the swap actually happened: swapSkin refuses
+     while a pour or a previous wipe is still running, and eating the taps
+     there would leave the third tap doing nothing at all. */
+  if(taps.length>=3&&swapSkin())taps=[];
+}
+/* pointerdown, not click. The wordmark has no cursor:pointer - that is
+   what keeps it from advertising itself - and iOS Safari withholds click
+   from an element it does not read as clickable. Every other tap target
+   in the game (.jug, button, .cell) does carry the pointer cursor, which
+   is why they were never affected. */
+const wm=document.getElementById('wordmark');
+if(window.PointerEvent)wm.addEventListener('pointerdown',countTap);
+else wm.addEventListener('click',countTap);
+
+paintSkin();
 loadLevel(unlocked(save.current)?save.current:0);
 
 /* ================= Service worker ================= */
