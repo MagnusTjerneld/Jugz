@@ -1,0 +1,7 @@
+# GitHub Pages (klassisk Jekyll-build från main, path /).
+# Filer här kopieras inte till den publicerade sajten.
+# Lägg till nya utvecklingsfiler i listan när de tillkommer.
+exclude:
+  - CLAUDE.md
+  - generate-levels.js
+  - generate-icons.js
