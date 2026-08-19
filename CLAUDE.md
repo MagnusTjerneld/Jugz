@@ -45,6 +45,12 @@ Each level is `{caps:[a,b,c], goal, opt}`. Start state is always `[a,0,0]`.
 
 **Persistence**: `localStorage` key `jugz_v1`, shape `{current, stars:{levelIndex:starCount}}`. All access is wrapped in try/catch so a blocked/absent localStorage degrades to a playable-but-unsaved session. Level *n* unlocks when level *n-1* has ≥1 star (`unlocked()`).
 
+`localStorage` is best-effort storage: WebKit clears script-writable storage after seven days without interaction, and Chrome evicts origins under disk pressure. `askPersist()` requests exemption via `navigator.storage.persist()` — but only once `PERSIST_AFTER` (10) levels have been cleared. Asking on first load is worse than useless: early requests are denied more often, and Firefox surfaces them as a dialog. Browsers decide by heuristic (installed PWA, engagement), so a denial is normal and not a bug — a cold Chrome profile on localhost denies it.
+
+`askPersist()` queries `navigator.permissions.query({name:'persistent-storage'})` first and bails on `denied`. Be aware of what that does **not** buy: Chrome reports `prompt` while still refusing on heuristic grounds — measured on a cold profile, the state was `prompt` and `persist()` returned false anyway. The query only short-circuits an explicit denial. What actually keeps the console clean is `console.debug`, which lands on Chrome's Verbose level: visible when you look for it, silent otherwise. The permission name is unknown in some browsers and throws, so that call has its own try/catch and falls through to attempting `persist()` regardless.
+
+Note the save is keyed by **level index**, so regenerating `levels.js` with a different seed silently reattributes stars to different puzzles. Nothing in code guards this.
+
 **Rendering**: jugs are hand-built SVG strings (`jugSVG()`) sized proportionally to capacity relative to the largest jug in the level. Water level is two synced rects — a filled `waterrect` and a `wclip` clip rect for the rising bubbles — plus a `surfg` group holding two drifting wave paths. Animation is pure CSS transitions/keyframes driven by attribute and `--custom-property` writes from `render()`; `fitJugs()` rescales the SVGs on resize to fit the stage. A `prefers-reduced-motion` block disables all of it.
 
 The palette is a set of `:root` custom properties with Swedish names (`--natt`, `--vatten-hi`, `--barnsten`, …); use those rather than literal colors.
