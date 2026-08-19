@@ -59,10 +59,14 @@ Navigation requests are answered from the cached `./index.html` regardless of UR
 
 ### How a release reaches users
 
-Everything in the shell is **stale-while-revalidate**: served from cache instantly, re-fetched in the background. This is deliberate — correctness does not depend on anyone remembering to bump a version. Two independent paths carry an update:
+Correctness does not depend on anyone remembering to bump a version. Two independent paths carry an update:
 
-1. **Content-only release** (e.g. `index.html` or `levels.js` changed, `sw.js` untouched). The background revalidation rewrites the cache entry, so the visitor sees the new build on their *next* load. One load behind, no worker involved.
+1. **Content-only release** (`sw.js` untouched). The navigation races the network against `NAV_TIMEOUT` (2 s), so a visitor on a working connection gets the new `index.html` on *this* load. Subresources (`levels.js`, icons) stay stale-while-revalidate and are therefore one load behind.
 2. **Release that changes `sw.js`.** The browser byte-compares the script and installs a new worker. Because a controller already exists, the page shows the "Ny version finns / Ladda om" pill; clicking it posts `SKIP_WAITING`, and the `controllerchange` handler reloads.
+
+Why the navigation is not plain network-first: `fetch` against an unreachable host can hang for a long time before rejecting, which would stall a launch that could have been served entirely from cache. The race caps that at `NAV_TIMEOUT`. A `self.navigator.onLine === false` fast path skips the race entirely when the browser knows it is offline — measured without it, a dead server cost the full 2 s on every launch. The check is written as `=== false` so an absent API degrades to the race rather than to a wrong branch.
+
+Consequence of (1): a release that changes `index.html` **and** `levels.js` can briefly serve new HTML against a cached `LEVELS`. Low risk here because `LEVELS` is plain data with a stable shape — but if the level format ever changes, bump `VERSION` in the same commit so the whole cache is discarded.
 
 Two details that make this work, both easy to break:
 
