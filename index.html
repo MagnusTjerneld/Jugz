@@ -319,7 +319,15 @@ async function askPersist(){
   if(!st||!st.persist)return;                      /* saknas i äldre Safari */
   try{
     if(await st.persisted())return;                /* redan beviljad */
-    console.log('Jugz: beständig lagring '+(await st.persist()?'beviljad':'nekad'));
+    /* Fråga om det ens är tillåtet innan vi begär. Ett uttalat "denied"
+       gör persist() till ett garanterat nej som bara ser ut som ett fel.
+       Namnet saknas i vissa webbläsare och kastar då – försök ändå. */
+    try{
+      const perm=await navigator.permissions.query({name:'persistent-storage'});
+      if(perm.state==='denied')return;
+    }catch(e){}
+    /* console.debug hamnar på Verbose-nivån: syns när man letar, tyst annars. */
+    console.debug('Jugz: beständig lagring '+(await st.persist()?'beviljad':'nekad'));
   }catch(e){}
 }
 
