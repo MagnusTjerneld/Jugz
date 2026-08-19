@@ -5,3 +5,5 @@ exclude:
   - CLAUDE.md
   - generate-levels.js
   - generate-icons.js
+  - check.js
+  - smoke.js

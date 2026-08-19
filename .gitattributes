@@ -1,0 +1,4 @@
+# Generatorerna skriver LF. Utan detta checkar git ut CRLF på Windows och
+# byte-jämförelsen i check.js ger falskt larm.
+* text=auto eol=lf
+*.png binary

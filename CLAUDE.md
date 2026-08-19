@@ -18,6 +18,8 @@ All user-facing strings, comments, and identifiers are Swedish. Keep new text in
 ## Commands
 
 ```bash
+node check.js               # all offline checks; exits 1 on failure (CI runs this on every PR)
+node smoke.js [base-url]    # checks the deployed site; waits for the deploy to catch up first
 node generate-levels.js     # regenerate levels.js (overwrites it in cwd)
 node generate-icons.js      # regenerate icons/*.png
 python -m http.server 8000  # serve locally; needed to exercise the service worker
@@ -97,3 +99,18 @@ Teams, Slack and friends read Open Graph tags. Two things they are strict about:
 The four absolute URLs in `index.html` (`og:url`, `og:image`, `twitter:image`) hardcode `https://magnustjerneld.github.io/Jugz/`. **If the site moves, they must be updated by hand** — nothing derives them.
 
 Unfurl results are cached hard by these services. After changing tags or the image, an already-shared link often keeps showing the old card; sharing the URL with a throwaway query string (`?v=2`) forces a fresh fetch.
+
+## Checks
+
+There is no test framework and no `package.json`. Two dependency-free Node scripts cover what can be verified without a browser, wired to `.github/workflows/`:
+
+**`check.js`** runs on every PR. It re-runs both generators *in a temp directory* — they read nothing and only write — and byte-compares the output against what is committed, so a generated file can never drift from its generator. It also re-verifies all 150 levels with an independent BFS, parses the inline script in `index.html`, and asserts that `SHELL_FILES` entries exist, `index.html` references resolve, `og:*` URLs are absolute `https`, PNG dimensions match the `sizes` declared in the manifest, and `_config.yml` excludes every dev file.
+
+**`smoke.js`** runs after a push to `main`. It first waits until the deployed `index.html`, `sw.js`, `manifest.webmanifest` and `levels.js` are byte-identical to this commit — Pages builds asynchronously, so without this gate the checks race the deploy. Only then does it assert status codes, content types, and that dev files 404. Gating on all four files matters: an early version compared only `index.html` and reported green against a deploy whose `sw.js` was a release behind.
+
+Two traps found while building these, both worth preserving:
+
+- **Line endings.** With `core.autocrlf=true` on Windows, git checks out CRLF while the generators write LF, so the byte comparison failed on a clean checkout. `.gitattributes` pins the tree to LF, *and* `check.js` normalizes line endings for text files anyway (PNGs stay byte-exact). CI on Ubuntu would never have surfaced this.
+- **Vacuous checks.** Every assertion here was negative-tested — break the thing, confirm it fails, restore. A check that cannot fail is worse than no check, because it reads as coverage.
+
+What these do **not** cover: anything requiring a real browser. Service worker behaviour, offline start, the update pill, and layout were all verified by hand. Bugs found that way this cycle include the update pill covering the button row, `cacheFirst` never revalidating, and `fontCache` background-fetching despite a comment claiming otherwise. A Playwright smoke test would close that gap at the cost of the repo's first dependency.
