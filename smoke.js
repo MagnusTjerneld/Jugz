@@ -1,106 +1,107 @@
-/* Rökttest mot den publicerade sajten. Kör: node smoke.js [bas-url]
-   Väntar först in att deployen hunnit ikapp, kontrollerar sedan att rätt
-   filer serveras och att utvecklingsfilerna inte gör det. Kod 1 vid fel. */
+/* Smoke test against the published site. Run: node smoke.js [base-url]
+   First waits for the deploy to catch up, then checks that the right files
+   are served and that the development files are not. Exits 1 on failure. */
 const fs=require('fs'),path=require('path');
 
-const BAS=(process.argv[2]||'https://magnustjerneld.github.io/Jugz').replace(/\/$/,'');
-const FÖRSÖK=Number(process.env.SMOKE_RETRIES||12);
-const PAUS=Number(process.env.SMOKE_DELAY_MS||15000);
+const BASE=(process.argv[2]||'https://magnustjerneld.github.io/Jugz').replace(/\/$/,'');
+const ATTEMPTS=Number(process.env.SMOKE_RETRIES||12);
+const DELAY=Number(process.env.SMOKE_DELAY_MS||15000);
 
 let fails=0,checks=0;
-const ok=n=>{checks++;console.log('  ok   '+n)};
-const bad=(n,d)=>{checks++;fails++;console.log('  FEL  '+n+(d?'\n         '+d:''))};
+const ok=n=>{checks++;console.log('  ok    '+n)};
+const bad=(n,d)=>{checks++;fails++;console.log('  FAIL  '+n+(d?'\n         '+d:''))};
 const assert=(c,n,d)=>c?ok(n):bad(n,d);
 const norm=s=>s.replace(/\r\n/g,'\n');
-const sov=ms=>new Promise(r=>setTimeout(r,ms));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
-async function hämta(sökväg){
-  const url=BAS+sökväg;
+async function get(route){
+  const url=BASE+route;
   try{
     const r=await fetch(url,{redirect:'follow'});
-    return {status:r.status,typ:r.headers.get('content-type')||'',
+    return {status:r.status,type:r.headers.get('content-type')||'',
             text:r.status===200?await r.text():'',url};
-  }catch(e){return {status:0,typ:'',text:'',url,fel:e.message}}
+  }catch(e){return {status:0,type:'',text:'',url,error:e.message}}
 }
 
-/* Deployen är klar när sajtens filer är identiska med dem i denna commit.
-   Jekyll kopierar filer utan front matter oförändrade, så bytena ska matcha.
+/* The deploy is done when the site's files are identical to those in this
+   commit. Jekyll copies files without front matter unchanged, so the bytes
+   should match.
 
-   Alla publicerade textfiler jämförs, inte bara index.html: en release som
-   bara rör sw.js hade annars gett grönt mot en gammal deploy. */
-const DEPLOYADE=['/index.html','/sw.js','/manifest.webmanifest','/levels.js'];
+   Every published text file is compared, not just index.html: a release
+   touching only sw.js would otherwise report green against an old deploy. */
+const DEPLOYED=['/index.html','/sw.js','/manifest.webmanifest','/levels.js'];
 
-async function väntaPåDeploy(){
-  for(let i=1;i<=FÖRSÖK;i++){
-    const avvikande=[];
-    for(const sökväg of DEPLOYADE){
-      const lokal=norm(fs.readFileSync(path.join(__dirname,sökväg.slice(1)),'utf8'));
-      const r=await hämta(sökväg);
-      if(r.status!==200)avvikande.push(sökväg+' (status '+r.status+')');
-      else if(norm(r.text)!==lokal)avvikande.push(sökväg+' (innehållet skiljer sig)');
+async function waitForDeploy(){
+  for(let i=1;i<=ATTEMPTS;i++){
+    const mismatched=[];
+    for(const route of DEPLOYED){
+      const local=norm(fs.readFileSync(path.join(__dirname,route.slice(1)),'utf8'));
+      const r=await get(route);
+      if(r.status!==200)mismatched.push(route+' (status '+r.status+')');
+      else if(norm(r.text)!==local)mismatched.push(route+' (content differs)');
     }
-    if(!avvikande.length){
-      console.log('Deployen matchar denna commit (försök '+i+')');
+    if(!mismatched.length){
+      console.log('The deploy matches this commit (attempt '+i+')');
       return true;
     }
-    console.log('Väntar på deploy ('+i+'/'+FÖRSÖK+'): '+avvikande.join(', '));
-    if(i<FÖRSÖK)await sov(PAUS);
+    console.log('Waiting for the deploy ('+i+'/'+ATTEMPTS+'): '+mismatched.join(', '));
+    if(i<ATTEMPTS)await sleep(DELAY);
   }
   return false;
 }
 
 (async()=>{
-  console.log('Rökttest mot '+BAS+'\n');
-  if(!await väntaPåDeploy()){
-    console.log('\nDeployen kom aldrig ikapp. Antingen har Pages inte byggt än,\n'+
-                'eller så publiceras något annat än denna commit.');
+  console.log('Smoke test against '+BASE+'\n');
+  if(!await waitForDeploy()){
+    console.log('\nThe deploy never caught up. Either Pages has not built yet,\n'+
+                'or something other than this commit is being published.');
     process.exit(1);
   }
 
-  console.log('\nSpelet');
+  console.log('\nThe game');
   {
-    const r=await hämta('/');
-    assert(r.status===200,'/ svarar 200','status '+r.status);
-    assert(/text\/html/.test(r.typ),'/ serveras som HTML','content-type: '+r.typ);
-    assert(r.text.includes('Hällningar'),'rubriken "Hällningar" finns',
-      'sajten kör en äldre version');
-    assert(r.text.includes('serviceWorker'),'servicearbetaren registreras');
+    const r=await get('/');
+    assert(r.status===200,'/ answers 200','status '+r.status);
+    assert(/text\/html/.test(r.type),'/ is served as HTML','content-type: '+r.type);
+    assert(r.text.includes('>Pours<'),'the "Pours" label is present',
+      'the site is running an older version');
+    assert(r.text.includes('serviceWorker'),'the service worker is registered');
   }
 
   console.log('\nPWA');
-  for(const [sökväg,mönster] of [
+  for(const [route,pattern] of [
     ['/sw.js',/NAV_TIMEOUT/],
     ['/manifest.webmanifest',/"icons"/],
   ]){
-    const r=await hämta(sökväg);
-    assert(r.status===200,sökväg+' svarar 200','status '+r.status);
-    assert(mönster.test(r.text),sökväg+' har förväntat innehåll');
+    const r=await get(route);
+    assert(r.status===200,route+' answers 200','status '+r.status);
+    assert(pattern.test(r.text),route+' has the expected content');
   }
   {
-    const r=await hämta('/manifest.webmanifest');
+    const r=await get('/manifest.webmanifest');
     try{
       const mf=JSON.parse(r.text);
-      assert(mf.icons.length>=3,'manifestet listar ikonerna');
-      assert(mf.start_url==='./','manifestets start_url är relativ');
-    }catch(e){bad('manifestet är giltig JSON',e.message)}
+      assert(mf.icons.length>=3,'the manifest lists the icons');
+      assert(mf.start_url==='./','the manifest start_url is relative');
+    }catch(e){bad('the manifest is valid JSON',e.message)}
   }
 
-  console.log('\nBilder');
-  for(const sökväg of ['/og-image.png','/icons/icon-192.png','/icons/icon-512.png',
-                       '/icons/icon-maskable-512.png','/icons/apple-touch-icon.png',
-                       '/icons/favicon-32.png']){
-    const r=await hämta(sökväg);
-    assert(r.status===200&&/image\/png/.test(r.typ),sökväg+' serveras som PNG',
-      'status '+r.status+', typ '+r.typ);
+  console.log('\nImages');
+  for(const route of ['/og-image.png','/icons/icon-192.png','/icons/icon-512.png',
+                      '/icons/icon-maskable-512.png','/icons/apple-touch-icon.png',
+                      '/icons/favicon-32.png']){
+    const r=await get(route);
+    assert(r.status===200&&/image\/png/.test(r.type),route+' is served as PNG',
+      'status '+r.status+', type '+r.type);
   }
 
-  console.log('\nUtvecklingsfiler ska inte publiceras');
-  for(const sökväg of ['/CLAUDE.md','/generate-levels.js','/generate-icons.js',
-                       '/check.js','/smoke.js','/_config.yml']){
-    const r=await hämta(sökväg);
-    assert(r.status===404,sökväg+' är inte publicerad','fick status '+r.status);
+  console.log('\nDevelopment files should not be published');
+  for(const route of ['/CLAUDE.md','/generate-levels.js','/generate-icons.js',
+                      '/check.js','/smoke.js','/_config.yml']){
+    const r=await get(route);
+    assert(r.status===404,route+' is not published','got status '+r.status);
   }
 
-  console.log('\n'+checks+' kontroller, '+fails+' fel');
+  console.log('\n'+checks+' checks, '+fails+' failures');
   process.exit(fails?1:0);
 })();

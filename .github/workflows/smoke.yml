@@ -1,7 +1,7 @@
-name: Rökttest mot live
+name: Smoke test against live
 
-# Körs efter merge till main. smoke.js väntar in att Pages hunnit publicera
-# denna commit innan den kontrollerar sajten.
+# Runs after a merge to main. smoke.js waits for Pages to publish this
+# commit before it checks the site.
 on:
   push:
     branches: [main]
