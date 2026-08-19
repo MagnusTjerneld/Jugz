@@ -1,0 +1,18 @@
+name: Rökttest mot live
+
+# Körs efter merge till main. smoke.js väntar in att Pages hunnit publicera
+# denna commit innan den kontrollerar sajten.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node smoke.js
