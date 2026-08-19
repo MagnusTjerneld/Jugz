@@ -303,6 +303,34 @@ function persist(){
   try{localStorage.setItem(SAVE_KEY,JSON.stringify(save));}catch(e){}
 }
 
+/* localStorage är "best effort" och får slängas av webbläsaren: WebKit
+   raderar skriptskrivbar lagring efter sju dagars inaktivitet, och Chrome
+   vräker origins vid diskbrist. Beständig lagring undantas från det.
+
+   Frågan ställs först efter PERSIST_AFTER klarade nivåer. Tidiga
+   förfrågningar nekas oftare, och i Firefox syns de som en dialogruta –
+   den vill vi inte möta någon med vid första sidladdningen. */
+const PERSIST_AFTER=10;
+let persistAsked=false;
+async function askPersist(){
+  if(persistAsked)return;
+  persistAsked=true;
+  const st=navigator.storage;
+  if(!st||!st.persist)return;                      /* saknas i äldre Safari */
+  try{
+    if(await st.persisted())return;                /* redan beviljad */
+    /* Fråga om det ens är tillåtet innan vi begär. Ett uttalat "denied"
+       gör persist() till ett garanterat nej som bara ser ut som ett fel.
+       Namnet saknas i vissa webbläsare och kastar då – försök ändå. */
+    try{
+      const perm=await navigator.permissions.query({name:'persistent-storage'});
+      if(perm.state==='denied')return;
+    }catch(e){}
+    /* console.debug hamnar på Verbose-nivån: syns när man letar, tyst annars. */
+    console.debug('Jugz: beständig lagring '+(await st.persist()?'beviljad':'nekad'));
+  }catch(e){}
+}
+
 /* ================= Spelstate ================= */
 let li=0, caps=[], state=[], history=[], moves=0, opt=0, goal=0, sel=-1, busy=false;
 const stage=document.getElementById('stage');
@@ -501,6 +529,7 @@ function checkWin(){
   save.stars[li]=Math.max(save.stars[li]||0,n);
   persist();
   showOpt();
+  if(Object.keys(save.stars).length>=PERSIST_AFTER)askPersist();
   document.getElementById('stars').innerHTML=
     '<i>★</i>'.repeat(n)+'<i class="off">★</i>'.repeat(3-n);
   document.getElementById('winText').textContent=
