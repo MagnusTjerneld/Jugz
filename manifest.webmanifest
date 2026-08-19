@@ -1,9 +1,9 @@
 {
   "id": "./",
-  "name": "Jugz – vattenkannepussel",
+  "name": "Jugz - the water jug puzzle",
   "short_name": "Jugz",
-  "description": "Mät upp exakt rätt mängd vatten med tre kannor. 150 nivåer.",
-  "lang": "sv",
+  "description": "Measure out exactly the right amount of water using three jugs. 150 levels.",
+  "lang": "en",
   "dir": "ltr",
   "start_url": "./",
   "scope": "./",

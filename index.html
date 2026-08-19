@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="sv">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#241E44">
-<meta name="description" content="Mät upp exakt rätt mängd vatten med tre kannor. 150 nivåer.">
+<meta name="description" content="Measure out exactly the right amount of water using three jugs. 150 levels.">
 <title>Jugz</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32.png">
@@ -14,46 +14,46 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Jugz">
 
-<!-- Länkförhandsvisning (Teams, Slack, Facebook, LinkedIn ...).
-     og:image MÅSTE vara en absolut URL – relativa sökvägar ger ingen bild.
-     Byts sajtens adress måste dessa fyra URL:er uppdateras för hand. -->
+<!-- Link previews (Teams, Slack, Facebook, LinkedIn ...).
+     og:image MUST be an absolute URL - relative paths yield no image.
+     If the site moves, these four URLs must be updated by hand. -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Jugz">
-<meta property="og:locale" content="sv_SE">
+<meta property="og:locale" content="en_US">
 <meta property="og:url" content="https://magnustjerneld.github.io/Jugz/">
-<meta property="og:title" content="Jugz – vattenkannepussel">
-<meta property="og:description" content="Mät upp exakt rätt mängd vatten med tre kannor. 150 nivåer.">
+<meta property="og:title" content="Jugz - the water jug puzzle">
+<meta property="og:description" content="Measure out exactly the right amount of water using three jugs. 150 levels.">
 <meta property="og:image" content="https://magnustjerneld.github.io/Jugz/og-image.png">
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Tre vattendroppar i fallande storlek mot en mörkblå bakgrund.">
+<meta property="og:image:alt" content="Three water droplets in decreasing size against a deep blue background.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Jugz – vattenkannepussel">
-<meta name="twitter:description" content="Mät upp exakt rätt mängd vatten med tre kannor. 150 nivåer.">
+<meta name="twitter:title" content="Jugz - the water jug puzzle">
+<meta name="twitter:description" content="Measure out exactly the right amount of water using three jugs. 150 levels.">
 <meta name="twitter:image" content="https://magnustjerneld.github.io/Jugz/og-image.png">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --natt:#171331;        /* djupaste skymningen */
-    --indigo:#241E44;      /* bakgrundens mitt */
-    --horisont:#4A3A78;    /* ljus violett vid horisonten */
-    --vatten-hi:#6FE7D4;   /* turkost vatten, yta */
-    --vatten-lo:#2FB7A6;   /* turkost vatten, djup */
-    --skum:#D8FFF6;        /* vågskum */
-    --krita:#F3EFFF;       /* text, lavendelvit */
-    --dis:#A79FC9;         /* sekundär text */
-    --barnsten:#FFB458;    /* stjärnor och ledtråd */
-    --guld:#FFCE7A;        /* måluppfyllt */
-    --mynta:#8FE3A8;       /* "Lätt"-etikett */
+    --night:#171331;       /* deepest dusk */
+    --indigo:#241E44;      /* middle of the backdrop */
+    --horizon:#4A3A78;     /* pale violet at the horizon */
+    --water-hi:#6FE7D4;    /* turquoise water, surface */
+    --water-lo:#2FB7A6;    /* turquoise water, depth */
+    --foam:#D8FFF6;        /* wave foam */
+    --chalk:#F3EFFF;       /* text, lavender white */
+    --haze:#A79FC9;        /* secondary text */
+    --amber:#FFB458;       /* stars and hint */
+    --gold:#FFCE7A;        /* goal reached */
+    --mint:#8FE3A8;        /* "Easy" badge */
     --panel:rgba(255,255,255,.07);
-    --panelkant:rgba(255,255,255,.14);
+    --panel-edge:rgba(255,255,255,.14);
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
   html,body{height:100%}
   body{
-    background:radial-gradient(130% 90% at 50% -10%, var(--horisont) 0%, var(--indigo) 45%, var(--natt) 100%) fixed;
-    color:var(--krita);
+    background:radial-gradient(130% 90% at 50% -10%, var(--horizon) 0%, var(--indigo) 45%, var(--night) 100%) fixed;
+    color:var(--chalk);
     font-family:'Fredoka',system-ui,sans-serif;
     display:flex;flex-direction:column;align-items:center;
     padding:16px 12px 24px; min-height:100dvh;
@@ -66,31 +66,31 @@
   .wordmark{display:flex;align-items:baseline;gap:6px}
   .wordmark h1{
     font-weight:700;font-size:1.7rem;letter-spacing:.01em;
-    background:linear-gradient(180deg,var(--skum),var(--vatten-hi));
+    background:linear-gradient(180deg,var(--foam),var(--water-hi));
     -webkit-background-clip:text;background-clip:text;color:transparent;
   }
   .droplet{
     width:.55rem;height:.55rem;border-radius:0 50% 50% 50%;
     transform:rotate(45deg) translateY(-4px);
-    background:linear-gradient(135deg,var(--skum),var(--vatten-hi));
+    background:linear-gradient(135deg,var(--foam),var(--water-hi));
   }
-  .lvltag{font-size:.82rem;color:var(--dis);font-weight:500}
+  .lvltag{font-size:.82rem;color:var(--haze);font-weight:500}
   .diff{display:inline-block;padding:2px 9px;border-radius:99px;font-size:.68rem;font-weight:600;margin-left:6px;vertical-align:1px}
-  .diff.easy{background:rgba(123,232,176,.16);color:var(--mynta)}
-  .diff.mid{background:rgba(255,180,88,.16);color:var(--barnsten)}
+  .diff.easy{background:rgba(123,232,176,.16);color:var(--mint)}
+  .diff.mid{background:rgba(255,180,88,.16);color:var(--amber)}
   .diff.hard{background:rgba(255,138,147,.16);color:#FF8A93}
 
   .goal{
     width:100%;max-width:520px;
-    background:var(--panel);border:1px solid var(--panelkant);
+    background:var(--panel);border:1px solid var(--panel-edge);
     backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
     border-radius:16px;padding:11px 16px;margin:8px 0 4px;
     display:flex;justify-content:space-between;align-items:center;
   }
-  .goal .g-text{font-size:.92rem;font-weight:400;color:var(--dis)}
-  .goal .g-text b{font-weight:700;font-size:1.25rem;color:var(--vatten-hi);margin:0 1px}
-  .moves{text-align:right;font-size:.75rem;color:var(--dis);line-height:1.3;font-weight:500}
-  .moves b{color:var(--krita);font-size:1.1rem;font-weight:700}
+  .goal .g-text{font-size:.92rem;font-weight:400;color:var(--haze)}
+  .goal .g-text b{font-weight:700;font-size:1.25rem;color:var(--water-hi);margin:0 1px}
+  .moves{text-align:right;font-size:.75rem;color:var(--haze);line-height:1.3;font-weight:500}
+  .moves b{color:var(--chalk);font-size:1.1rem;font-weight:700}
 
   .stage{
     width:100%;max-width:520px;
@@ -100,14 +100,14 @@
   .shelf{display:flex;align-items:flex-end;justify-content:center;gap:8px}
   .jug{display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;user-select:none;transition:transform .15s}
   .jug:active{transform:scale(.97)}
-  .jug .amt{font-weight:700;font-size:1.15rem;color:var(--krita)}
+  .jug .amt{font-weight:700;font-size:1.15rem;color:var(--chalk)}
   .jug svg{overflow:visible;filter:drop-shadow(0 18px 16px rgba(10,6,30,.55))}
   .jug .glassbody{fill:none;stroke:rgba(240,238,255,.6);stroke-width:2.5;transition:stroke .2s,filter .2s}
   .jug .glasshandle{fill:none;stroke:rgba(240,238,255,.55);stroke-width:7;stroke-linecap:round;transition:stroke .2s}
   .jug.sel .glassbody{stroke:#FFFFFF;stroke-width:3.5;filter:drop-shadow(0 0 10px rgba(216,255,246,.75))}
   .jug.sel .glasshandle{stroke:#FFFFFF}
-  .jug.hintflash .glassbody{stroke:var(--barnsten);stroke-width:3.5;filter:drop-shadow(0 0 10px rgba(255,180,88,.8))}
-  .jug.hintflash .glasshandle{stroke:var(--barnsten)}
+  .jug.hintflash .glassbody{stroke:var(--amber);stroke-width:3.5;filter:drop-shadow(0 0 10px rgba(255,180,88,.8))}
+  .jug.hintflash .glasshandle{stroke:var(--amber)}
   .jug .etch{fill:rgba(243,239,255,.55);font-family:'Fredoka',sans-serif;font-weight:600;pointer-events:none}
   .jug.deny{animation:shake .3s}
   @keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
@@ -123,14 +123,14 @@
   button{
     flex:1;padding:13px 4px;border-radius:14px;
     font-family:'Fredoka';font-weight:600;font-size:.9rem;
-    background:var(--panel);color:var(--krita);
-    border:1px solid var(--panelkant);
+    background:var(--panel);color:var(--chalk);
+    border:1px solid var(--panel-edge);
     backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
     cursor:pointer;transition:transform .1s, background .15s;
   }
   button:active{transform:scale(.96)}
   button.primary{
-    background:linear-gradient(180deg,var(--vatten-hi),var(--vatten-lo));
+    background:linear-gradient(180deg,var(--water-hi),var(--water-lo));
     color:#0B2B26;border-color:transparent;font-weight:700;
   }
   button:disabled{opacity:.35;pointer-events:none}
@@ -144,7 +144,7 @@
   .overlay.show{opacity:1;pointer-events:auto}
   .win{
     background:rgba(16,64,76,.92);
-    border:1px solid var(--panelkant);
+    border:1px solid var(--panel-edge);
     backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
     border-radius:22px;padding:26px 22px;
     width:min(90vw,380px);text-align:center;
@@ -153,14 +153,14 @@
   }
   .overlay.show .win{transform:translateY(0)}
   .win h2{font-weight:700;font-size:1.5rem;margin-bottom:6px}
-  .stars{font-size:2.1rem;letter-spacing:6px;margin:8px 0 4px;color:var(--barnsten)}
+  .stars{font-size:2.1rem;letter-spacing:6px;margin:8px 0 4px;color:var(--amber)}
   .stars i{display:inline-block;font-style:normal}
   .overlay.show .stars i{animation:pop .45s cubic-bezier(.5,1.7,.5,1) backwards}
   .overlay.show .stars i:nth-child(2){animation-delay:.13s}
   .overlay.show .stars i:nth-child(3){animation-delay:.26s}
   @keyframes pop{from{transform:scale(0)}}
   .stars .off{color:rgba(255,255,255,.15)}
-  .win p{color:var(--dis);font-size:.9rem;margin-bottom:18px;font-weight:400}
+  .win p{color:var(--haze);font-size:.9rem;margin-bottom:18px;font-weight:400}
   .win button{width:100%}
   .win button + button{margin-top:8px}
 
@@ -170,24 +170,24 @@
   }
   .cell{
     aspect-ratio:1;border-radius:13px;
-    border:1px solid var(--panelkant);background:rgba(255,255,255,.05);
+    border:1px solid var(--panel-edge);background:rgba(255,255,255,.05);
     display:flex;flex-direction:column;align-items:center;justify-content:center;
-    font-weight:600;font-size:1rem;cursor:pointer;color:var(--krita);
+    font-weight:600;font-size:1rem;cursor:pointer;color:var(--chalk);
   }
-  .cell .cstars{font-size:.58rem;color:var(--barnsten);letter-spacing:1px;margin-top:2px;height:.8em}
+  .cell .cstars{font-size:.58rem;color:var(--amber);letter-spacing:1px;margin-top:2px;height:.8em}
   .cell.done{background:rgba(111,231,212,.16);border-color:rgba(111,231,212,.45)}
-  .cell.cur{outline:2px solid var(--skum)}
+  .cell.cur{outline:2px solid var(--foam)}
   .cell.locked{opacity:.3;pointer-events:none}
 
-  /* Ligger i flödet ovanför knappraden, inte ovanpå den – annars skymmer
-     den "Ledtråd" och "Börja om" på låga skärmar. */
+  /* Sits in the flow above the button row, not on top of it - otherwise it
+     covers "Hint" and "Restart" on short screens. */
   .update{
     display:flex;align-items:center;gap:12px;align-self:center;
     margin-top:10px;
-    background:rgba(16,64,76,.92);border:1px solid var(--panelkant);
+    background:rgba(16,64,76,.92);border:1px solid var(--panel-edge);
     backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
     border-radius:99px;padding:9px 9px 9px 18px;
-    font-size:.85rem;font-weight:500;color:var(--krita);
+    font-size:.85rem;font-weight:500;color:var(--chalk);
     box-shadow:0 10px 30px rgba(4,10,26,.5);
   }
   .update[hidden]{display:none}
@@ -212,45 +212,45 @@
 </header>
 
 <div class="goal">
-  <div class="g-text">Mät upp exakt <b id="goalL"></b> i valfri kanna</div>
-  <div class="moves">Hällningar<br><b id="moveCount">0</b><span id="optCount"></span></div>
+  <div class="g-text">Measure out exactly <b id="goalL"></b> in any jug</div>
+  <div class="moves">Pours<br><b id="moveCount">0</b><span id="optCount"></span></div>
 </div>
 
 <div class="stage" id="stage"></div>
 
 <div class="update" id="updateBar" hidden>
-  <span>Ny version finns</span>
-  <button class="primary" id="btnUpdate">Ladda om</button>
+  <span>New version available</span>
+  <button class="primary" id="btnUpdate">Reload</button>
 </div>
 
 <div class="controls">
-  <button id="btnUndo">Ångra</button>
-  <button id="btnHint">Ledtråd</button>
-  <button id="btnReset">Börja om</button>
-  <button id="btnLevels">Nivåer</button>
+  <button id="btnUndo">Undo</button>
+  <button id="btnHint">Hint</button>
+  <button id="btnReset">Restart</button>
+  <button id="btnLevels">Levels</button>
 </div>
 
 <div class="overlay" id="overlay">
   <div class="win">
-    <h2>Löst!</h2>
+    <h2>Solved!</h2>
     <div class="stars" id="stars"></div>
     <p id="winText"></p>
-    <button class="primary" id="btnNext">Nästa nivå</button>
-    <button id="btnReplay">Spela igen</button>
+    <button class="primary" id="btnNext">Next level</button>
+    <button id="btnReplay">Play again</button>
   </div>
 </div>
 
 <div class="overlay" id="lvlOverlay">
   <div class="win">
-    <h2>Nivåer</h2>
+    <h2>Levels</h2>
     <div class="grid" id="lvlGrid"></div>
-    <button id="btnCloseLvls">Stäng</button>
+    <button id="btnCloseLvls">Close</button>
   </div>
 </div>
 
 <script src="levels.js"></script>
 <script>
-/* ================= BFS-kärna ================= */
+/* ================= BFS core ================= */
 function key(s){return s.join(',')}
 function pours(caps,s){
   const out=[];
@@ -292,58 +292,59 @@ function solveFrom(caps,state,goal){
   return null;
 }
 
-/* ================= Persistens ================= */
+/* ================= Persistence ================= */
 const SAVE_KEY='jugz_v1';
 let save={current:0,stars:{}};
 try{
   const s=JSON.parse(localStorage.getItem(SAVE_KEY));
   if(s&&typeof s==='object'&&s.stars)save=s;
-}catch(e){/* localStorage saknas eller blockerad: spela utan sparande */}
+}catch(e){/* localStorage absent or blocked: play without saving */}
 function persist(){
   try{localStorage.setItem(SAVE_KEY,JSON.stringify(save));}catch(e){}
 }
 
-/* localStorage är "best effort" och får slängas av webbläsaren: WebKit
-   raderar skriptskrivbar lagring efter sju dagars inaktivitet, och Chrome
-   vräker origins vid diskbrist. Beständig lagring undantas från det.
+/* localStorage is best effort and may be discarded by the browser: WebKit
+   clears script-writable storage after seven days without interaction, and
+   Chrome evicts origins under disk pressure. Persistent storage is exempt.
 
-   Frågan ställs först efter PERSIST_AFTER klarade nivåer. Tidiga
-   förfrågningar nekas oftare, och i Firefox syns de som en dialogruta –
-   den vill vi inte möta någon med vid första sidladdningen. */
+   We only ask after PERSIST_AFTER cleared levels. Early requests are denied
+   more often, and Firefox surfaces them as a dialog - nobody should meet
+   that on their first page load. */
 const PERSIST_AFTER=10;
 let persistAsked=false;
 async function askPersist(){
   if(persistAsked)return;
   persistAsked=true;
   const st=navigator.storage;
-  if(!st||!st.persist)return;                      /* saknas i äldre Safari */
+  if(!st||!st.persist)return;                      /* absent in older Safari */
   try{
-    if(await st.persisted())return;                /* redan beviljad */
-    /* Fråga om det ens är tillåtet innan vi begär. Ett uttalat "denied"
-       gör persist() till ett garanterat nej som bara ser ut som ett fel.
-       Namnet saknas i vissa webbläsare och kastar då – försök ändå. */
+    if(await st.persisted())return;                /* already granted */
+    /* Ask whether it is even allowed before requesting. An explicit
+       "denied" makes persist() a guaranteed no that merely looks like a bug.
+       The name is unknown in some browsers and throws - try anyway. */
     try{
       const perm=await navigator.permissions.query({name:'persistent-storage'});
       if(perm.state==='denied')return;
     }catch(e){}
-    /* console.debug hamnar på Verbose-nivån: syns när man letar, tyst annars. */
-    console.debug('Jugz: beständig lagring '+(await st.persist()?'beviljad':'nekad'));
+    /* console.debug lands on the Verbose level: visible when you look for it,
+       silent otherwise. */
+    console.debug('Jugz: persistent storage '+(await st.persist()?'granted':'denied'));
   }catch(e){}
 }
 
-/* ================= Spelstate ================= */
+/* ================= Game state ================= */
 let li=0, caps=[], state=[], history=[], moves=0, opt=0, goal=0, sel=-1, busy=false;
 const stage=document.getElementById('stage');
 
 function unlocked(i){return i===0||(save.stars[i-1]||0)>0;}
 function diffLabel(m){
-  if(m<=4)return['Lätt','easy'];
-  if(m<=7)return['Medel','mid'];
-  return['Svår','hard'];
+  if(m<=4)return['Easy','easy'];
+  if(m<=7)return['Medium','mid'];
+  return['Hard','hard'];
 }
 
-/* Det optimala antalet hällningar avslöjas först när nivån klarats en gång.
-   Dessförinnan vore lösningens längd given på förhand. */
+/* The optimal number of pours is revealed only once the level has been
+   cleared. Before that, the length of the solution would be a giveaway. */
 function showOpt(){
   const solved=(save.stars[li]||0)>0;
   document.getElementById('optCount').textContent=solved?(' / '+opt):'';
@@ -355,7 +356,7 @@ function loadLevel(i){
   caps=L.caps.slice();goal=L.goal;opt=L.opt;
   state=[caps[0],0,0];history=[];moves=0;sel=-1;
   save.current=li;persist();
-  document.getElementById('lvlname').textContent='Nivå '+(li+1)+' / '+LEVELS.length;
+  document.getElementById('lvlname').textContent='Level '+(li+1)+' / '+LEVELS.length;
   const[dl,dc]=diffLabel(opt);
   document.getElementById('diffbadge').innerHTML='<span class="diff '+dc+'">'+dl+'</span>';
   document.getElementById('goalL').textContent=goal+' L';
@@ -407,8 +408,8 @@ function jugSVG(idx,cap){
       <clipPath id="clip${idx}"><path d="${path}"/></clipPath>
       <clipPath id="wclip${idx}"><rect class="waterrect" id="wrect${idx}" x="0" y="${H}" width="${W}" height="0"/></clipPath>
       <linearGradient id="wg${idx}" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="var(--vatten-hi)"/>
-        <stop offset="1" stop-color="var(--vatten-lo)"/>
+        <stop offset="0" stop-color="var(--water-hi)"/>
+        <stop offset="1" stop-color="var(--water-lo)"/>
       </linearGradient>
     </defs>
     <path class="glasshandle" d="${handle}"/>
@@ -419,10 +420,10 @@ function jugSVG(idx,cap){
     <g clip-path="url(#clip${idx})">
       <g class="surfg" id="surfg${idx}" style="transform:translateY(${H}px);opacity:0">
         <g class="wavedrift rev" style="--lam:${lam}px;--wd:5.2s;transform-origin:0 0">
-          <path d="${wavePath(w2,lam,2)}" fill="var(--vatten-hi)" fill-opacity=".5" transform="translate(-${lam} 2)"/>
+          <path d="${wavePath(w2,lam,2)}" fill="var(--water-hi)" fill-opacity=".5" transform="translate(-${lam} 2)"/>
         </g>
         <g class="wavedrift" style="--lam:${lam}px;--wd:4.2s">
-          <path d="${wavePath(w2,lam,2.6)}" fill="var(--skum)" fill-opacity=".85" transform="translate(-${lam} 0)"/>
+          <path d="${wavePath(w2,lam,2.6)}" fill="var(--foam)" fill-opacity=".85" transform="translate(-${lam} 0)"/>
         </g>
       </g>
     </g>
@@ -454,7 +455,7 @@ function fitJugs(){
   const natW=svgs.reduce((t,s)=>t+(+s.getAttribute('width')),0)+8*(svgs.length-1);
   const natH=Math.max(...svgs.map(s=>+s.getAttribute('height')));
   const availW=(stage.clientWidth||Math.min(window.innerWidth-24,520))-6;
-  const availH=Math.max(150,(stage.clientHeight||320)-60); /* utrymme för siffran under */
+  const availH=Math.max(150,(stage.clientHeight||320)-60); /* room for the number below */
   const sc=Math.min(availW/natW,availH/natH,1.9);
   svgs.forEach(s=>{
     s.style.width=((+s.getAttribute('width'))*sc)+'px';
@@ -482,13 +483,13 @@ function render(){
     document.getElementById('amt'+i).textContent=state[i]+' L';
     const j=document.getElementById('jug'+i);
     j.classList.toggle('sel',sel===i);
-    document.getElementById('amt'+i).style.color=(state[i]===goal)?'var(--guld)':'var(--krita)';
+    document.getElementById('amt'+i).style.color=(state[i]===goal)?'var(--gold)':'var(--chalk)';
   });
   document.getElementById('moveCount').textContent=moves;
   document.getElementById('btnUndo').disabled=history.length===0;
 }
 
-/* ================= Nivåväljare ================= */
+/* ================= Level picker ================= */
 function openLevels(){
   const g=document.getElementById('lvlGrid');
   g.innerHTML='';
@@ -503,7 +504,7 @@ function openLevels(){
   document.getElementById('lvlOverlay').classList.add('show');
 }
 
-/* ================= Interaktion ================= */
+/* ================= Interaction ================= */
 function tap(i){
   if(busy)return;
   if(sel===-1){
@@ -533,16 +534,16 @@ function checkWin(){
   document.getElementById('stars').innerHTML=
     '<i>★</i>'.repeat(n)+'<i class="off">★</i>'.repeat(3-n);
   document.getElementById('winText').textContent=
-    moves===opt?'Perfekt! Löst på optimala '+opt+' hällningar.':
-    'Löst på '+moves+' hällningar. Optimalt är '+opt+'.';
+    moves===opt?'Perfect! Solved in the optimal '+opt+' pours.':
+    'Solved in '+moves+' pours. The optimum is '+opt+'.';
   document.getElementById('btnNext').style.display=(li<LEVELS.length-1)?'':'none';
   document.getElementById('overlay').classList.add('show');
 }
 
 document.getElementById('btnUndo').onclick=()=>{
   if(!history.length||busy)return;
-  /* Ångra är ett alternativ till att börja om, inte ett drag i sig:
-     hällningen räknas bort. history.length garanterar moves>0. */
+  /* Undo is an alternative to restarting, not a move of its own: the pour
+     is counted back off. history.length guarantees moves>0. */
   state=history.pop();moves--;sel=-1;render();
 };
 document.getElementById('btnReset').onclick=()=>loadLevel(li);
@@ -565,22 +566,22 @@ document.getElementById('btnReplay').onclick=()=>loadLevel(li);
 loadLevel(unlocked(save.current)?save.current:0);
 
 /* ================= Service worker ================= */
-/* Misslyckas tyst på file:// och andra osäkra ursprung. */
+/* Fails silently on file:// and other insecure origins. */
 if('serviceWorker' in navigator){
   window.addEventListener('load',async()=>{
     let wantReload=false;
-    /* controllerchange utlöses även när den allra första workern tar över,
-       så vi laddar bara om när användaren faktiskt bett om det. */
+    /* controllerchange also fires when the very first worker takes over, so
+       we only reload when the user actually asked for it. */
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
       if(wantReload)location.reload();
     });
     try{
-      /* updateViaCache:'none' gör att sw.js alltid hämtas från servern,
-         annars kan HTTP-cachen dölja att en ny version finns. */
+      /* updateViaCache:'none' makes sw.js always come from the server;
+         otherwise the HTTP cache can hide that a new version exists. */
       const reg=await navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'});
       const bar=document.getElementById('updateBar');
       const offer=w=>{
-        if(!w||!navigator.serviceWorker.controller)return; /* inte en uppdatering, utan första installationen */
+        if(!w||!navigator.serviceWorker.controller)return; /* first install, not an update */
         bar.hidden=false;
         document.getElementById('btnUpdate').onclick=()=>{
           wantReload=true;bar.hidden=true;

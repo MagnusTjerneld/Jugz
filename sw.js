@@ -1,16 +1,16 @@
-/* Service worker för Jugz.
+/* Service worker for Jugz.
 
-   Uppdateringsmodell: navigeringen kapplöper mot en kort klocka, resten av
-   skalet serveras cachat direkt och hämtas om i bakgrunden. En ny release
-   når därför användaren utan att någon behöver komma ihåg något – VERSION
-   nedan finns kvar som nödbroms för att slänga hela cachen, inte som
-   uppdateringsmekanism. */
+   Update model: the navigation races a short clock, the rest of the shell is
+   served from cache immediately and refetched in the background. A new
+   release therefore reaches the user without anyone having to remember
+   anything - VERSION below remains as an emergency brake for throwing away
+   the whole cache, not as the update mechanism. */
 const VERSION='v3';
 const SHELL='jugz-shell-'+VERSION;
 const RUNTIME='jugz-runtime-'+VERSION;
 
-/* Relativa URL:er löses mot sw.js placering, så detta fungerar även
-   under en underkatalog (t.ex. GitHub Pages /Jugz/). */
+/* Relative URLs resolve against the location of sw.js, so this works under
+   a subdirectory too (e.g. GitHub Pages /Jugz/). */
 const SHELL_FILES=[
   './',
   './index.html',
@@ -37,13 +37,13 @@ self.addEventListener('activate',e=>{
   })());
 });
 
-/* Sidan begär övertagandet när användaren klickat "Ladda om". */
+/* The page asks for the takeover once the user has clicked "Reload". */
 self.addEventListener('message',e=>{
   if(e.data&&e.data.type==='SKIP_WAITING')self.skipWaiting();
 });
 
-/* cache:'no-cache' kringgår webbläsarens HTTP-cache (Pages sätter max-age=600)
-   så revalideringen alltid frågar servern. Oförändrade filer svarar 304. */
+/* cache:'no-cache' bypasses the browser HTTP cache (Pages sets max-age=600)
+   so revalidation always asks the server. Unchanged files answer 304. */
 function revalidate(cache,key,url){
   return fetch(url,{cache:'no-cache'}).then(res=>{
     if(res&&res.ok)cache.put(key,res.clone());
@@ -51,12 +51,13 @@ function revalidate(cache,key,url){
   }).catch(()=>null);
 }
 
-/* Navigeringar: kapplöpning mellan nätverket och NAV_TIMEOUT.
-   Vinner nätverket får besökaren nya bygget direkt i stället för vid nästa
-   laddning. Vinner klockan serveras skalet ur cachen precis som förut, så
-   ett trasigt eller långsamt nät aldrig blir värre än cachat plus klockan.
-   Ren network-first vore fel här: fetch kan hänga länge innan den ger upp,
-   och då stod spelet still trots att allt låg cachat. */
+/* Navigations: a race between the network and NAV_TIMEOUT.
+   If the network wins, the visitor gets the new build right away instead of
+   on the next load. If the clock wins, the shell is served from cache just
+   as before, so a broken or slow network is never worse than cache plus the
+   clock. Plain network-first would be wrong here: fetch can hang for a long
+   time before giving up, and the game would stall despite everything being
+   cached. */
 const NAV_TIMEOUT=2000;
 
 async function navigation(e){
@@ -64,13 +65,13 @@ async function navigation(e){
   const hit=await cache.match('./index.html');
   const net=revalidate(cache,'./index.html','./index.html');
   if(!hit)return (await net)||Response.error();
-  /* Känt offline: vänta inte ut klockan på ett anrop som ändå misslyckas.
-     Utan detta kostade varje offline-start hela NAV_TIMEOUT – mätt till
-     drygt 2 s mot en död server. */
+  /* Known to be offline: do not wait out the clock on a request that will
+     fail anyway. Without this, every offline launch cost the full
+     NAV_TIMEOUT - measured at a good 2 s against a dead server. */
   if(self.navigator.onLine===false){e.waitUntil(net);return hit;}
   const first=await Promise.race([net,new Promise(r=>setTimeout(()=>r(null),NAV_TIMEOUT))]);
   if(first&&first.ok)return first;
-  e.waitUntil(net);   /* låt hämtningen gå klart och uppdatera cachen */
+  e.waitUntil(net);   /* let the fetch finish and update the cache */
   return hit;
 }
 
@@ -78,14 +79,15 @@ async function shellFirst(e,key,url){
   const cache=await caches.open(SHELL);
   const hit=await cache.match(key);
   const net=revalidate(cache,key,url);
-  if(hit){e.waitUntil(net);return hit;}          /* cachat nu, färskt nästa gång */
+  if(hit){e.waitUntil(net);return hit;}          /* cached now, fresh next time */
   return (await net)||Response.error();
 }
 
-/* Typsnitten hämtas en gång och revalideras aldrig. css2-svaret pekar ut
-   versionerade woff2-URL:er, och det paret fungerar ihop hur länge som helst.
-   Tidigare bakgrundshämtades de vid varje start trots kommentaren om
-   motsatsen – 562 B och två anrop per laddning till ingen nytta. */
+/* The fonts are fetched once and never revalidated. The css2 response names
+   content-versioned woff2 URLs, and that pair keeps working indefinitely.
+   An earlier version background-fetched them on every launch despite a
+   comment claiming the opposite - 562 B and two requests per load for
+   nothing. */
 async function fontCache(req){
   const cache=await caches.open(RUNTIME);
   const hit=await cache.match(req);
@@ -100,7 +102,7 @@ self.addEventListener('fetch',e=>{
   if(req.method!=='GET')return;
   const url=new URL(req.url);
 
-  /* Navigeringar serveras från skalet så att spelet startar offline. */
+  /* Navigations are served from the shell so the game starts offline. */
   if(req.mode==='navigate'){
     e.respondWith(navigation(e));
     return;
