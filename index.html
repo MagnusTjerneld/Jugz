@@ -51,6 +51,10 @@
     --glass:rgba(240,238,255,.60);  /* vessel outline */
     --tint:rgba(243,239,255,.07);   /* glass body */
     --etch:rgba(243,239,255,.55);   /* capacity engraved on the vessel */
+    /* The live amount, in the colour of the liquid itself. It shares a
+       line of sight with the etched capacity, and two numbers in the same
+       lavender white were being read for each other. */
+    --amount:#6FE7D4;
     --on-primary:#0B2B26;  /* text on the primary button */
     --panel:rgba(255,255,255,.07);
     --panel-edge:rgba(255,255,255,.14);
@@ -83,6 +87,9 @@
     --glass:rgba(255,244,248,.55);
     --tint:rgba(255,240,246,.06);
     --etch:rgba(255,240,246,.55);
+    /* Ruby again disappears into the burgundy, so the amount borrows the
+       meniscus rose, same as --done. */
+    --amount:#F0A8B8;
     --on-primary:#FFF0F4;
     --panel:rgba(255,255,255,.06);
     --panel-edge:rgba(255,235,242,.13);
@@ -161,7 +168,7 @@
   .shelf{display:flex;align-items:flex-end;justify-content:center;gap:8px}
   .jug{display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;user-select:none;transition:transform .15s}
   .jug:active{transform:scale(.97)}
-  .jug .amt{font-weight:700;font-size:1.15rem;color:var(--chalk)}
+  .jug .amt{font-weight:700;font-size:1.15rem;color:var(--amount)}
   .jug svg{overflow:visible;filter:drop-shadow(0 18px 16px rgba(10,6,30,.55))}
   .jug .glassbody{fill:none;stroke:var(--glass);stroke-width:2.5;transition:stroke .2s,filter .2s}
   .jug .glasshandle{fill:none;stroke:var(--glass);stroke-width:7;stroke-linecap:round;transition:stroke .2s}
@@ -697,7 +704,12 @@ function render(){
     document.getElementById('amt'+i).textContent=state[i]+' '+UNIT[skin];
     const j=document.getElementById('jug'+i);
     j.classList.toggle('sel',sel===i);
-    document.getElementById('amt'+i).style.color=(state[i]===goal)?'var(--gold)':'var(--chalk)';
+    /* Gold once it is the amount asked for; liquid colour while there is
+       liquid; and greyed out at empty, where a bright number would still
+       read as a measurement. The etched capacity never changes, so the
+       moving number is the one that carries colour. */
+    document.getElementById('amt'+i).style.color=
+      (state[i]===goal)?'var(--gold)':(state[i]>0?'var(--amount)':'var(--haze)');
   });
   document.getElementById('moveCount').textContent=moves;
   document.getElementById('btnUndo').disabled=history.length===0;
