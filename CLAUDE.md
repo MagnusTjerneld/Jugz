@@ -79,7 +79,7 @@ Two details that make this work, both easy to break:
 - The page registers with `updateViaCache:'none'`, otherwise the HTTP cache can hide that a new `sw.js` exists.
 - Revalidation fetches pass `cache:'no-cache'`. GitHub Pages serves `max-age=600`, so without this the SW would revalidate against the browser's own cache and see nothing new for ten minutes. Unchanged files answer `304`, so the cost is a conditional request.
 
-Google Fonts are **not** revalidated — their URLs are content-versioned and immutable.
+Google Fonts are fetched once and never revalidated. The `css2` response names content-versioned woff2 URLs, and that pair keeps working indefinitely. (An earlier version claimed this in a comment while the code still background-fetched both on every load — a DevTools network log is what caught it.)
 
 `VERSION` is now a manual escape hatch for discarding every cache wholesale (`activate` deletes any cache outside the current version's set), not the update mechanism. Still add new shell files to `SHELL_FILES`; forgetting only means the file is fetched from network rather than precached, not that users get stale content.
 
