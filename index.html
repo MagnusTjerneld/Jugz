@@ -213,7 +213,7 @@
 
 <div class="goal">
   <div class="g-text">Mät upp exakt <b id="goalL"></b> i valfri kanna</div>
-  <div class="moves">Drag<br><b id="moveCount">0</b> / <span id="optCount"></span></div>
+  <div class="moves">Hällningar<br><b id="moveCount">0</b><span id="optCount"></span></div>
 </div>
 
 <div class="stage" id="stage"></div>
@@ -314,6 +314,13 @@ function diffLabel(m){
   return['Svår','hard'];
 }
 
+/* Det optimala antalet hällningar avslöjas först när nivån klarats en gång.
+   Dessförinnan vore lösningens längd given på förhand. */
+function showOpt(){
+  const solved=(save.stars[li]||0)>0;
+  document.getElementById('optCount').textContent=solved?(' / '+opt):'';
+}
+
 function loadLevel(i){
   li=Math.max(0,Math.min(i,LEVELS.length-1));
   const L=LEVELS[li];
@@ -324,7 +331,7 @@ function loadLevel(i){
   const[dl,dc]=diffLabel(opt);
   document.getElementById('diffbadge').innerHTML='<span class="diff '+dc+'">'+dl+'</span>';
   document.getElementById('goalL').textContent=goal+' L';
-  document.getElementById('optCount').textContent=opt;
+  showOpt();
   buildJugs();render();
   document.getElementById('overlay').classList.remove('show');
   document.getElementById('lvlOverlay').classList.remove('show');
@@ -493,11 +500,12 @@ function checkWin(){
   const n=(moves<=opt)?3:(moves<=opt+2)?2:1;
   save.stars[li]=Math.max(save.stars[li]||0,n);
   persist();
+  showOpt();
   document.getElementById('stars').innerHTML=
     '<i>★</i>'.repeat(n)+'<i class="off">★</i>'.repeat(3-n);
   document.getElementById('winText').textContent=
-    moves===opt?'Perfekt! Löst på optimala '+opt+' drag.':
-    'Löst på '+moves+' drag. Optimalt är '+opt+'.';
+    moves===opt?'Perfekt! Löst på optimala '+opt+' hällningar.':
+    'Löst på '+moves+' hällningar. Optimalt är '+opt+'.';
   document.getElementById('btnNext').style.display=(li<LEVELS.length-1)?'':'none';
   document.getElementById('overlay').classList.add('show');
 }
