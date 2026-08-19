@@ -103,13 +103,15 @@
 
 
   header{width:100%;max-width:520px;display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
-  .wordmark{display:flex;align-items:baseline;gap:6px}
+  .wordmark{
+    display:flex;align-items:baseline;gap:6px;
+    user-select:none;-webkit-user-select:none;touch-action:manipulation;
+  }
   .wordmark h1{
     font-weight:700;font-size:1.7rem;letter-spacing:.01em;
     background:linear-gradient(180deg,var(--foam),var(--water-hi));
     -webkit-background-clip:text;background-clip:text;color:transparent;
   }
-  .wordmark{user-select:none;-webkit-user-select:none}
   .droplet{
     width:.55rem;height:.55rem;border-radius:0 50% 50% 50%;
     transform:rotate(45deg) translateY(-4px);
@@ -119,6 +121,10 @@
   /* The droplet tips over on the way into the wine skin: it pours,
      it does not toggle. */
   html[data-skin="wine"] .droplet{transform:rotate(225deg) translateY(-4px)}
+  /* Lighting up rather than moving: the droplet's transform already
+     carries the tipped state, and a keyframe on it would snap the skin. */
+  .droplet.ping{animation:ping .3s ease}
+  @keyframes ping{50%{filter:brightness(1.8) drop-shadow(0 0 7px var(--foam))}}
   .lvltag{font-size:.82rem;color:var(--haze);font-weight:500}
   .diff{display:inline-block;padding:2px 9px;border-radius:99px;font-size:.68rem;font-weight:600;margin-left:6px;vertical-align:1px}
   /* The rgba line is the fallback for browsers without color-mix; without
@@ -772,9 +778,9 @@ function applySkin(next){
 const REDUCED=window.matchMedia('(prefers-reduced-motion:reduce)').matches;
 let swapping=false;
 function swapSkin(){
-  if(swapping||busy)return;
+  if(swapping||busy)return false;
   const next=(skin==='wine')?'water':'wine';
-  if(REDUCED){applySkin(next);return;}
+  if(REDUCED){applySkin(next);return true;}
   swapping=true;
   /* A circle of the incoming backdrop grows out of the droplet, the skin
      changes underneath it, then it fades off. */
@@ -790,14 +796,35 @@ function swapSkin(){
     wipe.classList.add('fade');
     setTimeout(()=>{wipe.hidden=true;wipe.className='wipe';swapping=false;},460);
   },650);
+  return true;
 }
+
+const TAP_WINDOW=1500;
 let taps=[];
-document.getElementById('wordmark').addEventListener('click',()=>{
+function countTap(){
   const now=performance.now();
-  taps=taps.filter(t=>now-t<1200);
+  taps=taps.filter(t=>now-t<TAP_WINDOW);
   taps.push(now);
-  if(taps.length>=3){taps=[];swapSkin();}
-});
+  /* From the second tap on the droplet lights up. One stray tap does
+     nothing at all; a repeat says "keep going". Without that the switch is
+     not merely secret, it is undiscoverable. */
+  if(taps.length>=2){
+    const d=document.getElementById('droplet');
+    d.classList.remove('ping');void d.offsetWidth;d.classList.add('ping');
+  }
+  /* Only clear the run once the swap actually happened: swapSkin refuses
+     while a pour or a previous wipe is still running, and eating the taps
+     there would leave the third tap doing nothing at all. */
+  if(taps.length>=3&&swapSkin())taps=[];
+}
+/* pointerdown, not click. The wordmark has no cursor:pointer - that is
+   what keeps it from advertising itself - and iOS Safari withholds click
+   from an element it does not read as clickable. Every other tap target
+   in the game (.jug, button, .cell) does carry the pointer cursor, which
+   is why they were never affected. */
+const wm=document.getElementById('wordmark');
+if(window.PointerEvent)wm.addEventListener('pointerdown',countTap);
+else wm.addEventListener('click',countTap);
 
 paintSkin();
 loadLevel(unlocked(save.current)?save.current:0);
