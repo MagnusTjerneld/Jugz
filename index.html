@@ -104,9 +104,17 @@
 
   header{width:100%;max-width:520px;display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
   .wordmark{
-    display:flex;align-items:baseline;gap:6px;
+    display:flex;align-items:baseline;gap:6px;position:relative;
     user-select:none;-webkit-user-select:none;touch-action:manipulation;
   }
+  /* The hit area. The wordmark box hugs its own text - about 90x27 px,
+     and the droplet inside it is 9 px across - so aiming at the logo on a
+     phone mostly misses it. This lays a ~48 px-tall target over the whole
+     thing without moving anything. It also settles which element takes
+     the hit: the h1 paints through background-clip:text and the droplet
+     carries a filter while it pings, and neither is dependable. */
+  .wordmark::after{content:'';position:absolute;inset:-16px -20px}
+  .wordmark>*{pointer-events:none}
   .wordmark h1{
     font-weight:700;font-size:1.7rem;letter-spacing:.01em;
     background:linear-gradient(180deg,var(--foam),var(--water-hi));
@@ -799,23 +807,29 @@ function swapSkin(){
   return true;
 }
 
-const TAP_WINDOW=1500;
-let taps=[];
+/* A chain, not a fixed window: each tap only has to follow the one before
+   it within TAP_GAP. Three taps at a hesitant rhythm still pass, three
+   spread over a minute never do. A fixed total window punished exactly the
+   person who is still working out that the logo does anything at all -
+   they tap, look, tap, look, and the run expires under them. */
+const TAP_GAP=900;
+let taps=0,lastTap=-1e9;
 function countTap(){
+  /* The wipe is running: further taps are impatience, not a second run. */
+  if(swapping)return;
   const now=performance.now();
-  taps=taps.filter(t=>now-t<TAP_WINDOW);
-  taps.push(now);
+  taps=(now-lastTap<TAP_GAP)?taps+1:1;
+  lastTap=now;
   /* From the second tap on the droplet lights up. One stray tap does
      nothing at all; a repeat says "keep going". Without that the switch is
      not merely secret, it is undiscoverable. */
-  if(taps.length>=2){
+  if(taps>=2){
     const d=document.getElementById('droplet');
     d.classList.remove('ping');void d.offsetWidth;d.classList.add('ping');
   }
-  /* Only clear the run once the swap actually happened: swapSkin refuses
-     while a pour or a previous wipe is still running, and eating the taps
-     there would leave the third tap doing nothing at all. */
-  if(taps.length>=3&&swapSkin())taps=[];
+  /* swapSkin refuses while a pour is still animating. Leave the run
+     standing so the next tap completes it instead of starting over. */
+  if(taps>=3&&swapSkin())taps=0;
 }
 /* pointerdown, not click. The wordmark has no cursor:pointer - that is
    what keeps it from advertising itself - and iOS Safari withholds click
