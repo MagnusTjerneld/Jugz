@@ -41,6 +41,8 @@ Each level is `{caps:[a,b,c], goal, opt}`. Start state is always `[a,0,0]`.
 
 **Game state** (`index.html`): module-level `li, caps, state, history, moves, opt, goal, sel, busy`. Interaction is tap-to-select-source, tap-to-select-destination (`tap()`); `busy` gates input for 520 ms to match the CSS water transition. Star rating in `checkWin()`: 3 stars at `moves ≤ opt`, 2 at `≤ opt+2`, else 1. Note that Undo *increments* `moves` rather than decrementing — undoing costs a move.
 
+**`opt` is withheld until the level has been cleared once** (`showOpt()`), because the optimal count is a substantial part of the puzzle: knowing "3 pours" narrows the search enormously. The header reads `Hällningar 4` on a first attempt and `Hällningar 4 / 3` afterwards. The label is deliberately a count of *performed* pours, not a budget — the old `Drag 0 / 3` read as an allowance. Two coarser leaks remain by design: the difficulty badge buckets `opt` into Lätt/Medel/Svår, and the hint button reveals the next optimal move on demand.
+
 **Persistence**: `localStorage` key `jugz_v1`, shape `{current, stars:{levelIndex:starCount}}`. All access is wrapped in try/catch so a blocked/absent localStorage degrades to a playable-but-unsaved session. Level *n* unlocks when level *n-1* has ≥1 star (`unlocked()`).
 
 **Rendering**: jugs are hand-built SVG strings (`jugSVG()`) sized proportionally to capacity relative to the largest jug in the level. Water level is two synced rects — a filled `waterrect` and a `wclip` clip rect for the rising bubbles — plus a `surfg` group holding two drifting wave paths. Animation is pure CSS transitions/keyframes driven by attribute and `--custom-property` writes from `render()`; `fitJugs()` rescales the SVGs on resize to fit the stage. A `prefers-reduced-motion` block disables all of it.
@@ -51,13 +53,41 @@ The palette is a set of `:root` custom properties with Swedish names (`--natt`, 
 
 The site is deployed to GitHub Pages at `/Jugz/`, a **subdirectory**, not a domain root. Every path in the PWA files is therefore relative (`./index.html`, `./sw.js`, `./icons/…`) — an absolute `/…` path would break in production while still appearing to work on a root-served local server. Test under a subpath (serve the parent directory) when touching paths.
 
-`sw.js` keeps two caches: `jugz-shell-<VERSION>` precached at install from `SHELL_FILES`, and `jugz-runtime-<VERSION>` holding the Google Fonts CSS and woff2 (stale-while-revalidate) so Fredoka survives offline. Two rules when changing the shell:
-
-- add the new file to `SHELL_FILES`, and
-- bump `VERSION` — `activate` deletes every cache not in the current version's set.
-
-`install` deliberately does **not** call `skipWaiting()`, so a new worker takes over only once all tabs are closed; this avoids swapping assets mid-game. The trade-off is that an update lands on the next cold start, not the next reload.
+`sw.js` keeps two caches: `jugz-shell-<VERSION>` precached at install from `SHELL_FILES`, and `jugz-runtime-<VERSION>` holding the Google Fonts CSS and woff2.
 
 Navigation requests are answered from the cached `./index.html` regardless of URL, which is what makes the game start offline.
 
-`generate-icons.js` renders the droplet icons with a hand-rolled PNG encoder over the built-in `zlib` — no image dependency. Geometry is normalized (radius `.24`, circle center `.62`, apex `.10` of the canvas) and `dropScale` scales it about the center; the maskable variant uses `0.72` to stay inside the circular safe zone. Colors mirror the `:root` palette in `index.html`, so update both together.
+### How a release reaches users
+
+Correctness does not depend on anyone remembering to bump a version. Two independent paths carry an update:
+
+1. **Content-only release** (`sw.js` untouched). The navigation races the network against `NAV_TIMEOUT` (2 s), so a visitor on a working connection gets the new `index.html` on *this* load. Subresources (`levels.js`, icons) stay stale-while-revalidate and are therefore one load behind.
+2. **Release that changes `sw.js`.** The browser byte-compares the script and installs a new worker. Because a controller already exists, the page shows the "Ny version finns / Ladda om" pill; clicking it posts `SKIP_WAITING`, and the `controllerchange` handler reloads.
+
+Why the navigation is not plain network-first: `fetch` against an unreachable host can hang for a long time before rejecting, which would stall a launch that could have been served entirely from cache. The race caps that at `NAV_TIMEOUT`. A `self.navigator.onLine === false` fast path skips the race entirely when the browser knows it is offline — measured without it, a dead server cost the full 2 s on every launch. The check is written as `=== false` so an absent API degrades to the race rather than to a wrong branch.
+
+Consequence of (1): a release that changes `index.html` **and** `levels.js` can briefly serve new HTML against a cached `LEVELS`. Low risk here because `LEVELS` is plain data with a stable shape — but if the level format ever changes, bump `VERSION` in the same commit so the whole cache is discarded.
+
+Two details that make this work, both easy to break:
+
+- The page registers with `updateViaCache:'none'`, otherwise the HTTP cache can hide that a new `sw.js` exists.
+- Revalidation fetches pass `cache:'no-cache'`. GitHub Pages serves `max-age=600`, so without this the SW would revalidate against the browser's own cache and see nothing new for ten minutes. Unchanged files answer `304`, so the cost is a conditional request.
+
+Google Fonts are **not** revalidated — their URLs are content-versioned and immutable.
+
+`VERSION` is now a manual escape hatch for discarding every cache wholesale (`activate` deletes any cache outside the current version's set), not the update mechanism. Still add new shell files to `SHELL_FILES`; forgetting only means the file is fetched from network rather than precached, not that users get stale content.
+
+The `controllerchange` reload is gated behind a `wantReload` flag set by the button. `clients.claim()` in `activate` fires `controllerchange` on the very first install too, and reloading there would be a spurious refresh on a first visit.
+
+`generate-icons.js` renders both the icons and `og-image.png` with a hand-rolled PNG encoder over the built-in `zlib` — no image dependency. `render(w, h, drops, bg)` is shared; `icon()` places one centered droplet, `banner()` three in falling sizes. The `bg` argument exists because the square icons and the 1200×630 banner need different gradient radii — changing it in one place silently alters the other, so the icon call passes the original `{rx:1.30, ry:0.90}` explicitly. Colors mirror the `:root` palette in `index.html`, so update both together.
+
+## Link previews
+
+Teams, Slack and friends read Open Graph tags. Two things they are strict about:
+
+- **`og:image` must be an absolute `https://` URL.** A relative path yields a preview card with a placeholder instead of an image — this is the usual cause.
+- The image must be publicly reachable, PNG/JPEG, ideally 1200×630.
+
+The four absolute URLs in `index.html` (`og:url`, `og:image`, `twitter:image`) hardcode `https://magnustjerneld.github.io/Jugz/`. **If the site moves, they must be updated by hand** — nothing derives them.
+
+Unfurl results are cached hard by these services. After changing tags or the image, an already-shared link often keeps showing the old card; sharing the URL with a throwaway query string (`?v=2`) forces a fresh fetch.

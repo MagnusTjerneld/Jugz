@@ -13,6 +13,25 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Jugz">
+
+<!-- Länkförhandsvisning (Teams, Slack, Facebook, LinkedIn ...).
+     og:image MÅSTE vara en absolut URL – relativa sökvägar ger ingen bild.
+     Byts sajtens adress måste dessa fyra URL:er uppdateras för hand. -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Jugz">
+<meta property="og:locale" content="sv_SE">
+<meta property="og:url" content="https://magnustjerneld.github.io/Jugz/">
+<meta property="og:title" content="Jugz – vattenkannepussel">
+<meta property="og:description" content="Mät upp exakt rätt mängd vatten med tre kannor. 150 nivåer.">
+<meta property="og:image" content="https://magnustjerneld.github.io/Jugz/og-image.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Tre vattendroppar i fallande storlek mot en mörkblå bakgrund.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Jugz – vattenkannepussel">
+<meta name="twitter:description" content="Mät upp exakt rätt mängd vatten med tre kannor. 150 nivåer.">
+<meta name="twitter:image" content="https://magnustjerneld.github.io/Jugz/og-image.png">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
@@ -160,6 +179,20 @@
   .cell.cur{outline:2px solid var(--skum)}
   .cell.locked{opacity:.3;pointer-events:none}
 
+  /* Ligger i flödet ovanför knappraden, inte ovanpå den – annars skymmer
+     den "Ledtråd" och "Börja om" på låga skärmar. */
+  .update{
+    display:flex;align-items:center;gap:12px;align-self:center;
+    margin-top:10px;
+    background:rgba(16,64,76,.92);border:1px solid var(--panelkant);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    border-radius:99px;padding:9px 9px 9px 18px;
+    font-size:.85rem;font-weight:500;color:var(--krita);
+    box-shadow:0 10px 30px rgba(4,10,26,.5);
+  }
+  .update[hidden]{display:none}
+  .update button{flex:0 0 auto;padding:8px 16px;border-radius:99px;font-size:.82rem}
+
   @media (min-width:900px){
     .stage{max-width:760px}
     .jug .amt{font-size:1.35rem}
@@ -180,10 +213,15 @@
 
 <div class="goal">
   <div class="g-text">Mät upp exakt <b id="goalL"></b> i valfri kanna</div>
-  <div class="moves">Drag<br><b id="moveCount">0</b> / <span id="optCount"></span></div>
+  <div class="moves">Hällningar<br><b id="moveCount">0</b><span id="optCount"></span></div>
 </div>
 
 <div class="stage" id="stage"></div>
+
+<div class="update" id="updateBar" hidden>
+  <span>Ny version finns</span>
+  <button class="primary" id="btnUpdate">Ladda om</button>
+</div>
 
 <div class="controls">
   <button id="btnUndo">Ångra</button>
@@ -276,6 +314,13 @@ function diffLabel(m){
   return['Svår','hard'];
 }
 
+/* Det optimala antalet hällningar avslöjas först när nivån klarats en gång.
+   Dessförinnan vore lösningens längd given på förhand. */
+function showOpt(){
+  const solved=(save.stars[li]||0)>0;
+  document.getElementById('optCount').textContent=solved?(' / '+opt):'';
+}
+
 function loadLevel(i){
   li=Math.max(0,Math.min(i,LEVELS.length-1));
   const L=LEVELS[li];
@@ -286,7 +331,7 @@ function loadLevel(i){
   const[dl,dc]=diffLabel(opt);
   document.getElementById('diffbadge').innerHTML='<span class="diff '+dc+'">'+dl+'</span>';
   document.getElementById('goalL').textContent=goal+' L';
-  document.getElementById('optCount').textContent=opt;
+  showOpt();
   buildJugs();render();
   document.getElementById('overlay').classList.remove('show');
   document.getElementById('lvlOverlay').classList.remove('show');
@@ -455,11 +500,12 @@ function checkWin(){
   const n=(moves<=opt)?3:(moves<=opt+2)?2:1;
   save.stars[li]=Math.max(save.stars[li]||0,n);
   persist();
+  showOpt();
   document.getElementById('stars').innerHTML=
     '<i>★</i>'.repeat(n)+'<i class="off">★</i>'.repeat(3-n);
   document.getElementById('winText').textContent=
-    moves===opt?'Perfekt! Löst på optimala '+opt+' drag.':
-    'Löst på '+moves+' drag. Optimalt är '+opt+'.';
+    moves===opt?'Perfekt! Löst på optimala '+opt+' hällningar.':
+    'Löst på '+moves+' hällningar. Optimalt är '+opt+'.';
   document.getElementById('btnNext').style.display=(li<LEVELS.length-1)?'':'none';
   document.getElementById('overlay').classList.add('show');
 }
@@ -490,8 +536,34 @@ loadLevel(unlocked(save.current)?save.current:0);
 /* ================= Service worker ================= */
 /* Misslyckas tyst på file:// och andra osäkra ursprung. */
 if('serviceWorker' in navigator){
-  window.addEventListener('load',()=>{
-    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  window.addEventListener('load',async()=>{
+    let wantReload=false;
+    /* controllerchange utlöses även när den allra första workern tar över,
+       så vi laddar bara om när användaren faktiskt bett om det. */
+    navigator.serviceWorker.addEventListener('controllerchange',()=>{
+      if(wantReload)location.reload();
+    });
+    try{
+      /* updateViaCache:'none' gör att sw.js alltid hämtas från servern,
+         annars kan HTTP-cachen dölja att en ny version finns. */
+      const reg=await navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'});
+      const bar=document.getElementById('updateBar');
+      const offer=w=>{
+        if(!w||!navigator.serviceWorker.controller)return; /* inte en uppdatering, utan första installationen */
+        bar.hidden=false;
+        document.getElementById('btnUpdate').onclick=()=>{
+          wantReload=true;bar.hidden=true;
+          w.postMessage({type:'SKIP_WAITING'});
+        };
+      };
+      if(reg.waiting)offer(reg.waiting);
+      reg.addEventListener('updatefound',()=>{
+        const w=reg.installing;
+        if(!w)return;
+        w.addEventListener('statechange',()=>{if(w.state==='installed')offer(w)});
+      });
+      reg.update().catch(()=>{});
+    }catch(e){}
   });
 }
 </script>
