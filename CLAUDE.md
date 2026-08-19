@@ -41,7 +41,7 @@ Do not use `convert` on this machine for image work: on Windows that resolves to
 
 Each level is `{caps:[a,b,c], goal, opt}`. Start state is always `[a,0,0]`.
 
-**Game state** (`index.html`): module-level `li, caps, state, history, moves, opt, goal, sel, busy`. Interaction is tap-to-select-source, tap-to-select-destination (`tap()`); `busy` gates input for 520 ms to match the CSS water transition. Star rating in `checkWin()`: 3 stars at `moves ≤ opt`, 2 at `≤ opt+2`, else 1. Note that Undo *increments* `moves` rather than decrementing — undoing costs a move.
+**Game state** (`index.html`): module-level `li, caps, state, history, moves, opt, goal, sel, busy`. Interaction is tap-to-select-source, tap-to-select-destination (`tap()`); `busy` gates input for 520 ms to match the CSS water transition. Star rating in `checkWin()`: 3 stars at `moves ≤ opt`, 2 at `≤ opt+2`, else 1. Undo decrements `moves` — it is an alternative to restarting, not a move of its own, so it must not count against the star threshold. The `history.length` guard keeps the counter from going negative.
 
 **`opt` is withheld until the level has been cleared once** (`showOpt()`), because the optimal count is a substantial part of the puzzle: knowing "3 pours" narrows the search enormously. The header reads `Hällningar 4` on a first attempt and `Hällningar 4 / 3` afterwards. The label is deliberately a count of *performed* pours, not a budget — the old `Drag 0 / 3` read as an allowance. Two coarser leaks remain by design: the difficulty badge buckets `opt` into Lätt/Medel/Svår, and the hint button reveals the next optimal move on demand.
 
