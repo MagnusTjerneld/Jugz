@@ -1,13 +1,13 @@
-/* Beroendefria kontroller för Jugz. Kör: node check.js
-   Fångar det som går att avgöra utan webbläsare. Avslutar med kod 1 vid fel. */
+/* Dependency-free checks for Jugz. Run: node check.js
+   Catches whatever can be decided without a browser. Exits 1 on failure. */
 const fs=require('fs'),path=require('path'),vm=require('vm'),os=require('os');
 const {execFileSync}=require('child_process');
 
 const ROOT=__dirname;
 let fails=0,checks=0;
-const ok=name=>{checks++;console.log('  ok   '+name)};
-const bad=(name,detalj)=>{checks++;fails++;console.log('  FEL  '+name+(detalj?'\n         '+detalj:''))};
-const assert=(cond,name,detalj)=>cond?ok(name):bad(name,detalj);
+const ok=name=>{checks++;console.log('  ok    '+name)};
+const bad=(name,detail)=>{checks++;fails++;console.log('  FAIL  '+name+(detail?'\n         '+detail:''))};
+const assert=(cond,name,detail)=>cond?ok(name):bad(name,detail);
 const read=p=>fs.readFileSync(path.join(ROOT,p),'utf8');
 const group=t=>console.log('\n'+t);
 
@@ -17,21 +17,21 @@ for(const f of fs.readdirSync(ROOT).filter(f=>f.endsWith('.js'))){
   try{new vm.Script(read(f),{filename:f});ok(f)}
   catch(e){bad(f,e.message)}
 }
-/* Inbäddad JS i index.html – ett syntaxfel där gör sidan helt död. */
+/* Inline JS in index.html - a syntax error there kills the page outright. */
 {
   const html=read('index.html');
   const blocks=[...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)];
-  assert(blocks.length>0,'index.html innehåller inbäddad JS');
+  assert(blocks.length>0,'index.html contains inline JS');
   blocks.forEach((m,i)=>{
-    try{new vm.Script(m[1],{filename:'index.html#script'+i});ok('index.html inbäddad JS #'+i)}
-    catch(e){bad('index.html inbäddad JS #'+i,e.message)}
+    try{new vm.Script(m[1],{filename:'index.html#script'+i});ok('index.html inline JS #'+i)}
+    catch(e){bad('index.html inline JS #'+i,e.message)}
   });
 }
 
-/* ---------- Generatorerna är deterministiska ----------
-   Körs i en temporär katalog: generatorerna läser inga filer, bara skriver.
-   Skiljer sig utfallet från det incheckade har någon handredigerat. */
-group('Generatorer (kör om och jämför byte för byte)');
+/* ---------- The generators are deterministic ----------
+   Run in a temp directory: the generators read no files, they only write.
+   If the output differs from what is committed, someone hand-edited it. */
+group('Generators (re-run and compare byte for byte)');
 {
   const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'jugz-check-'));
   try{
@@ -39,28 +39,29 @@ group('Generatorer (kör om och jämför byte för byte)');
       execFileSync(process.execPath,[path.join(ROOT,gen)],{cwd:tmp,stdio:'pipe'});
     const walk=d=>fs.readdirSync(d,{withFileTypes:true}).flatMap(e=>
       e.isDirectory()?walk(path.join(d,e.name)):[path.join(d,e.name)]);
-    for(const producerad of walk(tmp)){
-      const namn=path.relative(tmp,producerad).replace(/\\/g,'/');
-      const incheckad=path.join(ROOT,namn);
-      if(!fs.existsSync(incheckad)){bad(namn+' saknas i repot','generatorn producerar den');continue}
-      /* Textfiler jämförs med normaliserade radslut: git kan checka ut CRLF
-         på Windows medan generatorn alltid skriver LF. Binärer jämförs exakt. */
-      const a=fs.readFileSync(producerad),b=fs.readFileSync(incheckad);
-      const text=/\.(js|json|webmanifest|html|yml|md)$/.test(namn);
-      const radslut=/\r\n/g;
-      const lika=text
-        ? a.toString('utf8').replace(radslut,'\n')===b.toString('utf8').replace(radslut,'\n')
+    for(const produced of walk(tmp)){
+      const name=path.relative(tmp,produced).replace(/\\/g,'/');
+      const committed=path.join(ROOT,name);
+      if(!fs.existsSync(committed)){bad(name+' is missing from the repo','the generator produces it');continue}
+      /* Text files are compared with normalised line endings: git may check
+         out CRLF on Windows while the generator always writes LF. Binaries
+         are compared exactly. */
+      const a=fs.readFileSync(produced),b=fs.readFileSync(committed);
+      const text=/\.(js|json|webmanifest|html|yml|md)$/.test(name);
+      const eol=/\r\n/g;
+      const same=text
+        ? a.toString('utf8').replace(eol,'\n')===b.toString('utf8').replace(eol,'\n')
         : a.equals(b);
-      assert(lika,namn+' matchar generatorn',
-        'incheckad fil skiljer sig – kör om generatorn och checka in resultatet');
+      assert(same,name+' matches the generator',
+        'the committed file differs - re-run the generator and commit the result');
     }
-  }catch(e){bad('generatorerna kunde köras',e.message)}
+  }catch(e){bad('the generators could run',e.message)}
   finally{fs.rmSync(tmp,{recursive:true,force:true})}
 }
 
-/* ---------- Nivåerna ----------
-   Oberoende bredden-först-sökning: nås målet på exakt opt drag? */
-group('Nivåer');
+/* ---------- The levels ----------
+   Independent breadth-first search: is the goal reached in exactly opt moves? */
+group('Levels');
 {
   const LEVELS=vm.runInNewContext(read('levels.js')+';LEVELS');
   const minMoves=(caps,goal)=>{
@@ -89,52 +90,52 @@ group('Nivåer');
     }
     return null;
   };
-  assert(LEVELS.length===150,'150 nivåer','hittade '+LEVELS.length);
-  const trasiga=[];
+  assert(LEVELS.length===150,'150 levels','found '+LEVELS.length);
+  const broken=[];
   LEVELS.forEach((L,i)=>{
     const m=minMoves(L.caps,L.goal);
-    if(m!==L.opt)trasiga.push('nivå '+(i+1)+': caps '+L.caps.join('/')+' mål '+L.goal+
-      ' säger opt '+L.opt+' men lösaren fick '+m);
+    if(m!==L.opt)broken.push('level '+(i+1)+': caps '+L.caps.join('/')+' goal '+L.goal+
+      ' claims opt '+L.opt+' but the solver got '+m);
   });
-  assert(trasiga.length===0,'alla nivåer lösbara på exakt opt',trasiga.slice(0,5).join('\n         '));
-  const sedda=new Set(),dubblerade=[];
+  assert(broken.length===0,'every level solvable in exactly opt',broken.slice(0,5).join('\n         '));
+  const seen=new Set(),duplicates=[];
   for(const L of LEVELS){
     const k=L.caps.join('-')+':'+L.goal;
-    if(sedda.has(k))dubblerade.push(k);
-    sedda.add(k);
+    if(seen.has(k))duplicates.push(k);
+    seen.add(k);
   }
-  assert(dubblerade.length===0,'inga dubblerade pussel',dubblerade.join(', '));
+  assert(duplicates.length===0,'no duplicated puzzles',duplicates.join(', '));
 }
 
-/* ---------- Skalet ---------- */
-group('Servicearbetarens skal');
+/* ---------- The shell ---------- */
+group('Service worker shell');
 {
   const sw=read('sw.js');
   const block=sw.match(/const SHELL_FILES=\[([\s\S]*?)\];/);
-  if(!block)bad('SHELL_FILES kunde läsas ur sw.js');
+  if(!block)bad('SHELL_FILES could be read out of sw.js');
   else{
-    const filer=[...block[1].matchAll(/'([^']+)'/g)].map(m=>m[1]);
-    assert(filer.length>0,'SHELL_FILES är ifylld');
-    for(const f of filer){
-      if(f==='./')continue;                      /* katalogen, inte en fil */
-      assert(fs.existsSync(path.join(ROOT,f)),'SHELL_FILES: '+f+' finns',
-        'precachas en fil som saknas kastar addAll och installationen misslyckas');
+    const files=[...block[1].matchAll(/'([^']+)'/g)].map(m=>m[1]);
+    assert(files.length>0,'SHELL_FILES is populated');
+    for(const f of files){
+      if(f==='./')continue;                      /* the directory, not a file */
+      assert(fs.existsSync(path.join(ROOT,f)),'SHELL_FILES: '+f+' exists',
+        'precaching a missing file makes addAll throw and the install fail');
     }
   }
 }
 
-/* ---------- Referenser i index.html ---------- */
-group('Referenser');
+/* ---------- References in index.html ---------- */
+group('References');
 {
   const html=read('index.html');
   const refs=[...html.matchAll(/(?:src|href)="([^"]+)"/g)].map(m=>m[1])
     .filter(u=>!/^(https?:|data:|#)/.test(u));
-  assert(refs.length>0,'hittade lokala referenser');
+  assert(refs.length>0,'found local references');
   for(const r of new Set(refs))
-    assert(fs.existsSync(path.join(ROOT,r)),'index.html refererar '+r);
+    assert(fs.existsSync(path.join(ROOT,r)),'index.html references '+r);
 }
 
-/* ---------- Länkförhandsvisning ---------- */
+/* ---------- Link previews ---------- */
 group('Open Graph');
 {
   const html=read('index.html');
@@ -143,55 +144,55 @@ group('Open Graph');
     return m&&m[1];
   };
   for(const n of ['og:title','og:description','og:url','og:image','twitter:card'])
-    assert(!!tag(n),'taggen '+n+' finns');
+    assert(!!tag(n),'the tag '+n+' exists');
   for(const n of ['og:url','og:image','twitter:image']){
     const v=tag(n)||'';
-    assert(v.startsWith('https://'),n+' är absolut https',
-      'relativa URL:er ger ingen förhandsvisningsbild i Teams/Slack – värdet var "'+v+'"');
+    assert(v.startsWith('https://'),n+' is absolute https',
+      'relative URLs yield no preview image in Teams/Slack - the value was "'+v+'"');
   }
-  const lokal=(tag('og:image')||'').split('/').pop();
-  assert(!!lokal&&fs.existsSync(path.join(ROOT,lokal)),
-    'og:image pekar på en fil som finns: '+lokal);
+  const local=(tag('og:image')||'').split('/').pop();
+  assert(!!local&&fs.existsSync(path.join(ROOT,local)),
+    'og:image points at a file that exists: '+local);
 }
 
-/* ---------- Bilder ----------
-   Bredd och höjd ligger i PNG:ens IHDR, byte 16–24. */
+/* ---------- Images ----------
+   Width and height live in the PNG IHDR, bytes 16-24. */
 function pngSize(p){
   const b=fs.readFileSync(p);
   if(b.length<24||b.toString('ascii',12,16)!=='IHDR')return null;
   return {w:b.readUInt32BE(16),h:b.readUInt32BE(20)};
 }
-group('Bilder och manifest');
+group('Images and manifest');
 {
   const og=pngSize(path.join(ROOT,'og-image.png'));
-  assert(og&&og.w===1200&&og.h===630,'og-image.png är 1200x630',
-    og?('är '+og.w+'x'+og.h):'kunde inte läsas som PNG');
+  assert(og&&og.w===1200&&og.h===630,'og-image.png is 1200x630',
+    og?('it is '+og.w+'x'+og.h):'could not be read as a PNG');
 
   const mf=JSON.parse(read('manifest.webmanifest'));
   for(const icon of mf.icons){
     const f=icon.src.replace(/^\.\//,'');
     const p=path.join(ROOT,f);
-    if(!fs.existsSync(p)){bad('manifest-ikon '+f+' finns');continue}
+    if(!fs.existsSync(p)){bad('manifest icon '+f+' exists');continue}
     const s=pngSize(p),[w,h]=icon.sizes.split('x').map(Number);
-    assert(s&&s.w===w&&s.h===h,'manifest-ikon '+f+' är '+icon.sizes,
-      s?('filen är '+s.w+'x'+s.h):'kunde inte läsas som PNG');
+    assert(s&&s.w===w&&s.h===h,'manifest icon '+f+' is '+icon.sizes,
+      s?('the file is '+s.w+'x'+s.h):'could not be read as a PNG');
   }
-  assert(mf.icons.some(i=>i.purpose==='maskable'),'manifestet har en maskable-ikon');
-  for(const nyckel of ['name','short_name','start_url','scope','display'])
-    assert(!!mf[nyckel],'manifestet har '+nyckel);
+  assert(mf.icons.some(i=>i.purpose==='maskable'),'the manifest has a maskable icon');
+  for(const key of ['name','short_name','start_url','scope','display'])
+    assert(!!mf[key],'the manifest has '+key);
   assert(mf.start_url.startsWith('./')&&mf.scope.startsWith('./'),
-    'manifestets start_url och scope är relativa',
-    'sajten ligger under /Jugz/ – absoluta sökvägar bryter i produktion');
+    'the manifest start_url and scope are relative',
+    'the site lives under /Jugz/ - absolute paths break in production');
 }
 
-/* ---------- Pages-uteslutning ---------- */
+/* ---------- Pages exclusion ---------- */
 group('Pages');
 {
   const cfg=read('_config.yml');
   for(const f of ['CLAUDE.md','generate-levels.js','generate-icons.js','check.js','smoke.js'])
-    assert(cfg.includes(f),'_config.yml utesluter '+f,
-      'utvecklingsfiler ska inte publiceras på sajten');
+    assert(cfg.includes(f),'_config.yml excludes '+f,
+      'development files should not be published to the site');
 }
 
-console.log('\n'+checks+' kontroller, '+fails+' fel');
+console.log('\n'+checks+' checks, '+fails+' failures');
 process.exit(fails?1:0);
