@@ -60,4 +60,15 @@ The site is deployed to GitHub Pages at `/Jugz/`, a **subdirectory**, not a doma
 
 Navigation requests are answered from the cached `./index.html` regardless of URL, which is what makes the game start offline.
 
-`generate-icons.js` renders the droplet icons with a hand-rolled PNG encoder over the built-in `zlib` — no image dependency. Geometry is normalized (radius `.24`, circle center `.62`, apex `.10` of the canvas) and `dropScale` scales it about the center; the maskable variant uses `0.72` to stay inside the circular safe zone. Colors mirror the `:root` palette in `index.html`, so update both together.
+`generate-icons.js` renders both the icons and `og-image.png` with a hand-rolled PNG encoder over the built-in `zlib` — no image dependency. `render(w, h, drops, bg)` is shared; `icon()` places one centered droplet, `banner()` three in falling sizes. The `bg` argument exists because the square icons and the 1200×630 banner need different gradient radii — changing it in one place silently alters the other, so the icon call passes the original `{rx:1.30, ry:0.90}` explicitly. Colors mirror the `:root` palette in `index.html`, so update both together.
+
+## Link previews
+
+Teams, Slack and friends read Open Graph tags. Two things they are strict about:
+
+- **`og:image` must be an absolute `https://` URL.** A relative path yields a preview card with a placeholder instead of an image — this is the usual cause.
+- The image must be publicly reachable, PNG/JPEG, ideally 1200×630.
+
+The four absolute URLs in `index.html` (`og:url`, `og:image`, `twitter:image`) hardcode `https://magnustjerneld.github.io/Jugz/`. **If the site moves, they must be updated by hand** — nothing derives them.
+
+Unfurl results are cached hard by these services. After changing tags or the image, an already-shared link often keeps showing the old card; sharing the URL with a throwaway query string (`?v=2`) forces a fresh fetch.
