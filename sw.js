@@ -1,9 +1,10 @@
 /* Service worker för Jugz.
 
-   Uppdateringsmodell: allt i skalet serveras cachat direkt och hämtas om i
-   bakgrunden (stale-while-revalidate). En ny release når därför användaren
-   utan att någon behöver komma ihåg något – VERSION nedan finns kvar som
-   nödbroms för att slänga hela cachen, inte som uppdateringsmekanism. */
+   Uppdateringsmodell: navigeringen kapplöper mot en kort klocka, resten av
+   skalet serveras cachat direkt och hämtas om i bakgrunden. En ny release
+   når därför användaren utan att någon behöver komma ihåg något – VERSION
+   nedan finns kvar som nödbroms för att slänga hela cachen, inte som
+   uppdateringsmekanism. */
 const VERSION='v3';
 const SHELL='jugz-shell-'+VERSION;
 const RUNTIME='jugz-runtime-'+VERSION;
@@ -50,6 +51,29 @@ function revalidate(cache,key,url){
   }).catch(()=>null);
 }
 
+/* Navigeringar: kapplöpning mellan nätverket och NAV_TIMEOUT.
+   Vinner nätverket får besökaren nya bygget direkt i stället för vid nästa
+   laddning. Vinner klockan serveras skalet ur cachen precis som förut, så
+   ett trasigt eller långsamt nät aldrig blir värre än cachat plus klockan.
+   Ren network-first vore fel här: fetch kan hänga länge innan den ger upp,
+   och då stod spelet still trots att allt låg cachat. */
+const NAV_TIMEOUT=2000;
+
+async function navigation(e){
+  const cache=await caches.open(SHELL);
+  const hit=await cache.match('./index.html');
+  const net=revalidate(cache,'./index.html','./index.html');
+  if(!hit)return (await net)||Response.error();
+  /* Känt offline: vänta inte ut klockan på ett anrop som ändå misslyckas.
+     Utan detta kostade varje offline-start hela NAV_TIMEOUT – mätt till
+     drygt 2 s mot en död server. */
+  if(self.navigator.onLine===false){e.waitUntil(net);return hit;}
+  const first=await Promise.race([net,new Promise(r=>setTimeout(()=>r(null),NAV_TIMEOUT))]);
+  if(first&&first.ok)return first;
+  e.waitUntil(net);   /* låt hämtningen gå klart och uppdatera cachen */
+  return hit;
+}
+
 async function shellFirst(e,key,url){
   const cache=await caches.open(SHELL);
   const hit=await cache.match(key);
@@ -77,7 +101,7 @@ self.addEventListener('fetch',e=>{
 
   /* Navigeringar serveras från skalet så att spelet startar offline. */
   if(req.mode==='navigate'){
-    e.respondWith(shellFirst(e,'./index.html','./index.html'));
+    e.respondWith(navigation(e));
     return;
   }
   if(FONT_HOSTS.includes(url.hostname)){
