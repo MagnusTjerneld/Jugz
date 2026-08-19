@@ -541,7 +541,9 @@ function checkWin(){
 
 document.getElementById('btnUndo').onclick=()=>{
   if(!history.length||busy)return;
-  state=history.pop();moves++;sel=-1;render();
+  /* Ångra är ett alternativ till att börja om, inte ett drag i sig:
+     hällningen räknas bort. history.length garanterar moves>0. */
+  state=history.pop();moves--;sel=-1;render();
 };
 document.getElementById('btnReset').onclick=()=>loadLevel(li);
 document.getElementById('btnHint').onclick=()=>{
