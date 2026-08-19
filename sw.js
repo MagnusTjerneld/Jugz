@@ -82,16 +82,17 @@ async function shellFirst(e,key,url){
   return (await net)||Response.error();
 }
 
-/* Typsnitten ligger på oföränderliga, versionerade URL:er – ingen revalidering. */
-async function fontCache(e,req){
+/* Typsnitten hämtas en gång och revalideras aldrig. css2-svaret pekar ut
+   versionerade woff2-URL:er, och det paret fungerar ihop hur länge som helst.
+   Tidigare bakgrundshämtades de vid varje start trots kommentaren om
+   motsatsen – 562 B och två anrop per laddning till ingen nytta. */
+async function fontCache(req){
   const cache=await caches.open(RUNTIME);
   const hit=await cache.match(req);
-  const net=fetch(req).then(res=>{
-    if(res&&(res.ok||res.type==='opaque'))cache.put(req,res.clone());
-    return res;
-  }).catch(()=>null);
-  if(hit){e.waitUntil(net);return hit;}
-  return (await net)||Response.error();
+  if(hit)return hit;
+  const res=await fetch(req).catch(()=>null);
+  if(res&&(res.ok||res.type==='opaque'))cache.put(req,res.clone());
+  return res||Response.error();
 }
 
 self.addEventListener('fetch',e=>{
@@ -105,7 +106,7 @@ self.addEventListener('fetch',e=>{
     return;
   }
   if(FONT_HOSTS.includes(url.hostname)){
-    e.respondWith(fontCache(e,req));
+    e.respondWith(fontCache(req));
     return;
   }
   if(url.origin===self.location.origin){
