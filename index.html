@@ -51,6 +51,10 @@
     --glass:rgba(240,238,255,.60);  /* vessel outline */
     --tint:rgba(243,239,255,.07);   /* glass body */
     --etch:rgba(243,239,255,.55);   /* capacity engraved on the vessel */
+    /* The live amount, in the colour of the liquid itself. It shares a
+       line of sight with the etched capacity, and two numbers in the same
+       lavender white were being read for each other. */
+    --amount:#6FE7D4;
     --on-primary:#0B2B26;  /* text on the primary button */
     --panel:rgba(255,255,255,.07);
     --panel-edge:rgba(255,255,255,.14);
@@ -83,6 +87,9 @@
     --glass:rgba(255,244,248,.55);
     --tint:rgba(255,240,246,.06);
     --etch:rgba(255,240,246,.55);
+    /* Ruby again disappears into the burgundy, so the amount borrows the
+       meniscus rose, same as --done. */
+    --amount:#F0A8B8;
     --on-primary:#FFF0F4;
     --panel:rgba(255,255,255,.06);
     --panel-edge:rgba(255,235,242,.13);
@@ -161,7 +168,7 @@
   .shelf{display:flex;align-items:flex-end;justify-content:center;gap:8px}
   .jug{display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;user-select:none;transition:transform .15s}
   .jug:active{transform:scale(.97)}
-  .jug .amt{font-weight:700;font-size:1.15rem;color:var(--chalk)}
+  .jug .amt{font-weight:700;font-size:1.15rem;color:var(--amount)}
   .jug svg{overflow:visible;filter:drop-shadow(0 18px 16px rgba(10,6,30,.55))}
   .jug .glassbody{fill:none;stroke:var(--glass);stroke-width:2.5;transition:stroke .2s,filter .2s}
   .jug .glasshandle{fill:none;stroke:var(--glass);stroke-width:7;stroke-linecap:round;transition:stroke .2s}
@@ -184,9 +191,18 @@
   .wavedrift.rev{animation-duration:calc(var(--wd,4.5s)*1.7);animation-direction:reverse}
   @keyframes drift{to{transform:translateX(calc(-1*var(--lam)))}}
   /* Wine legs, the tears that run back down the glass wall. They stand in
-     for the bubbles, which read as fizz - wrong for a still red. They sit
-     inside the surface group, so they always end at the wine line. */
-  .leg{animation:legfall var(--lg,8s) linear var(--ld,0s) infinite}
+     for the bubbles, which read as fizz - wrong for a still red.
+     One run per pour and nothing after it, on the glass that was poured
+     OUT of: the film is what the receding wine left behind, so the tears
+     start at the level the glass was emptied from and run down to where
+     it settled. A still red does not weep by itself, and the old loop
+     kept sending fresh tears down glasses nobody had touched in a minute.
+     They hang off their own group rather than the surface group, because
+     surfg goes transparent when a glass empties - and a glass poured dry
+     is exactly the one with the most wall to run down. runLegs sets the
+     travel and the duration; the speed is what stays constant. */
+  .leg{opacity:0}
+  .legsg.legs .leg{animation:legfall var(--lg,5s) ease-in-out var(--ld,.45s) 1 both}
   @keyframes legfall{
     0%{transform:translateY(calc(-1*var(--ls)));opacity:0}
     14%{opacity:.5}
@@ -593,13 +609,15 @@ function glassSVG(idx,cap){
   const fs=Math.max(14,Math.round(g.bowlW*0.24));
   const lam=Math.max(24,Math.round(g.bowlW/2));
   const w2=Math.round(2*g.belly)+2*lam;
+  /* Only the horizontal placing and the stagger are fixed here. How far a
+     tear falls is not knowable until a pour happens, so runLegs writes
+     --ls and --lg. */
   let legs='';
   for(let k=0;k<3;k++){
     const lx=(g.cx-g.rimR*0.55+(g.rimR*1.1/2)*k+((idx*7+k*11)%9)).toFixed(1);
-    const ls=Math.round(g.bowlH*0.30+k*9+(idx%3)*5);
     legs+='<line class="leg" x1="'+lx+'" y1="0" x2="'+lx+'" y2="13" stroke="var(--foam)"'
-      +' stroke-width="2" stroke-linecap="round" style="--ls:'+ls+'px;--lg:'
-      +(7+k*1.1+idx*0.6).toFixed(1)+'s;--ld:'+(k*2.4).toFixed(1)+'s"/>';
+      +' stroke-width="2" stroke-linecap="round" style="--ld:'
+      +(0.45+k*0.16+(idx%3)*0.05).toFixed(2)+'s"/>';
   }
   /* The band stops at the bottom of the bowl: the jug's band would pour
      wine down into the stem. */
@@ -625,8 +643,8 @@ function glassSVG(idx,cap){
         <g class="wavedrift" style="--lam:${lam}px;--wd:4.2s">
           <path d="${wavePath(w2,lam,2.6)}" fill="var(--foam)" fill-opacity=".85" transform="translate(-${lam} 0)"/>
         </g>
-        ${legs}
       </g>
+      <g class="legsg" id="legsg${idx}" style="transform:translateY(${g.H}px)">${legs}</g>
     </g>
     <path d="${shine}" fill="none" stroke="rgba(255,255,255,.40)" stroke-width="3" stroke-linecap="round"/>
     <path class="rimback" d="${rimBack}"/>
@@ -686,7 +704,12 @@ function render(){
     document.getElementById('amt'+i).textContent=state[i]+' '+UNIT[skin];
     const j=document.getElementById('jug'+i);
     j.classList.toggle('sel',sel===i);
-    document.getElementById('amt'+i).style.color=(state[i]===goal)?'var(--gold)':'var(--chalk)';
+    /* Gold once it is the amount asked for; liquid colour while there is
+       liquid; and greyed out at empty, where a bright number would still
+       read as a measurement. The etched capacity never changes, so the
+       moving number is the one that carries colour. */
+    document.getElementById('amt'+i).style.color=
+      (state[i]===goal)?'var(--gold)':(state[i]>0?'var(--amount)':'var(--haze)');
   });
   document.getElementById('moveCount').textContent=moves;
   document.getElementById('btnUndo').disabled=history.length===0;
@@ -717,11 +740,48 @@ function tap(i){
   if(sel===i){sel=-1;render();return;}
   const amt=Math.min(state[sel],caps[i]-state[i]);
   if(amt<=0){deny(i);return;}
+  const from=sel,fell=state[sel];  /* both cleared below; the legs need them */
   history.push(state.slice());
   state[sel]-=amt;state[i]+=amt;
   moves++;sel=-1;busy=true;
   render();
+  runLegs(from,fell);
   setTimeout(()=>{busy=false;checkWin();},520);
+}
+/* One run of the legs down the wall a pour just laid bare: from the level
+   glass i was emptied from (was) to where it settled. Everything the tears
+   need is that band, so it is measured here rather than baked into the SVG.
+
+   LEG_SPEED keeps the trickle at one pace whatever the band is - a fixed
+   duration made a long drain race and a short one crawl. A band under
+   MIN_BAND is not worth a tear; it would be shorter than the tear itself.
+
+   Restarting means dropping the class and forcing a reflow before putting
+   it back, or the browser never sees it leave and a second pour from the
+   same glass does nothing. The reflow is getBoundingClientRect, not the
+   offsetWidth trick used on the droplet: legsg is an SVG <g>, and SVG
+   elements have no offsetWidth to read. */
+const LEG_SPEED=9, MIN_BAND=12, LEG_MIN=3.5, LEG_MAX=11;
+function runLegs(i,was){
+  if(skin!=='wine')return;
+  const lg=document.getElementById('legsg'+i);
+  if(!lg)return;
+  const svg=document.querySelector('#jug'+i+' svg');
+  const usable=(+svg.dataset.bot)-(+svg.dataset.top);
+  const y=a=>(+svg.dataset.bot)-(a/caps[i])*usable;
+  const band=y(state[i])-y(was);
+  lg.classList.remove('legs');
+  if(band<MIN_BAND)return;
+  /* The group parks at the new wine line and the tears fall to it, so the
+     band is the whole of their travel. No transition on legsg: it has to
+     be in place before the run starts, not slide there with the level. */
+  lg.style.transform='translateY('+y(state[i])+'px)';
+  const secs=Math.min(LEG_MAX,Math.max(LEG_MIN,band/LEG_SPEED));
+  lg.querySelectorAll('.leg').forEach((l,k)=>{
+    l.style.setProperty('--ls',band.toFixed(1)+'px');
+    l.style.setProperty('--lg',(secs*(1+k*0.14)).toFixed(2)+'s');
+  });
+  lg.getBoundingClientRect();lg.classList.add('legs');
 }
 function deny(i){
   const j=document.getElementById('jug'+i);
