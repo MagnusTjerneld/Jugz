@@ -1,6 +1,6 @@
 /* Service worker för Jugz.
    Höj VERSION när skalet ändras – gammal cache städas bort vid activate. */
-const VERSION='v1';
+const VERSION='v2';
 const SHELL='jugz-shell-'+VERSION;
 const RUNTIME='jugz-runtime-'+VERSION;
 
