@@ -51,14 +51,27 @@ The palette is a set of `:root` custom properties with Swedish names (`--natt`, 
 
 The site is deployed to GitHub Pages at `/Jugz/`, a **subdirectory**, not a domain root. Every path in the PWA files is therefore relative (`./index.html`, `./sw.js`, `./icons/…`) — an absolute `/…` path would break in production while still appearing to work on a root-served local server. Test under a subpath (serve the parent directory) when touching paths.
 
-`sw.js` keeps two caches: `jugz-shell-<VERSION>` precached at install from `SHELL_FILES`, and `jugz-runtime-<VERSION>` holding the Google Fonts CSS and woff2 (stale-while-revalidate) so Fredoka survives offline. Two rules when changing the shell:
-
-- add the new file to `SHELL_FILES`, and
-- bump `VERSION` — `activate` deletes every cache not in the current version's set.
-
-`install` deliberately does **not** call `skipWaiting()`, so a new worker takes over only once all tabs are closed; this avoids swapping assets mid-game. The trade-off is that an update lands on the next cold start, not the next reload.
+`sw.js` keeps two caches: `jugz-shell-<VERSION>` precached at install from `SHELL_FILES`, and `jugz-runtime-<VERSION>` holding the Google Fonts CSS and woff2.
 
 Navigation requests are answered from the cached `./index.html` regardless of URL, which is what makes the game start offline.
+
+### How a release reaches users
+
+Everything in the shell is **stale-while-revalidate**: served from cache instantly, re-fetched in the background. This is deliberate — correctness does not depend on anyone remembering to bump a version. Two independent paths carry an update:
+
+1. **Content-only release** (e.g. `index.html` or `levels.js` changed, `sw.js` untouched). The background revalidation rewrites the cache entry, so the visitor sees the new build on their *next* load. One load behind, no worker involved.
+2. **Release that changes `sw.js`.** The browser byte-compares the script and installs a new worker. Because a controller already exists, the page shows the "Ny version finns / Ladda om" pill; clicking it posts `SKIP_WAITING`, and the `controllerchange` handler reloads.
+
+Two details that make this work, both easy to break:
+
+- The page registers with `updateViaCache:'none'`, otherwise the HTTP cache can hide that a new `sw.js` exists.
+- Revalidation fetches pass `cache:'no-cache'`. GitHub Pages serves `max-age=600`, so without this the SW would revalidate against the browser's own cache and see nothing new for ten minutes. Unchanged files answer `304`, so the cost is a conditional request.
+
+Google Fonts are **not** revalidated — their URLs are content-versioned and immutable.
+
+`VERSION` is now a manual escape hatch for discarding every cache wholesale (`activate` deletes any cache outside the current version's set), not the update mechanism. Still add new shell files to `SHELL_FILES`; forgetting only means the file is fetched from network rather than precached, not that users get stale content.
+
+The `controllerchange` reload is gated behind a `wantReload` flag set by the button. `clients.claim()` in `activate` fires `controllerchange` on the very first install too, and reloading there would be a spurious refresh on a first visit.
 
 `generate-icons.js` renders both the icons and `og-image.png` with a hand-rolled PNG encoder over the built-in `zlib` — no image dependency. `render(w, h, drops, bg)` is shared; `icon()` places one centered droplet, `banner()` three in falling sizes. The `bg` argument exists because the square icons and the 1200×630 banner need different gradient radii — changing it in one place silently alters the other, so the icon call passes the original `{rx:1.30, ry:0.90}` explicitly. Colors mirror the `:root` palette in `index.html`, so update both together.
 

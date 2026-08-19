@@ -179,6 +179,20 @@
   .cell.cur{outline:2px solid var(--skum)}
   .cell.locked{opacity:.3;pointer-events:none}
 
+  /* Ligger i flödet ovanför knappraden, inte ovanpå den – annars skymmer
+     den "Ledtråd" och "Börja om" på låga skärmar. */
+  .update{
+    display:flex;align-items:center;gap:12px;align-self:center;
+    margin-top:10px;
+    background:rgba(16,64,76,.92);border:1px solid var(--panelkant);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    border-radius:99px;padding:9px 9px 9px 18px;
+    font-size:.85rem;font-weight:500;color:var(--krita);
+    box-shadow:0 10px 30px rgba(4,10,26,.5);
+  }
+  .update[hidden]{display:none}
+  .update button{flex:0 0 auto;padding:8px 16px;border-radius:99px;font-size:.82rem}
+
   @media (min-width:900px){
     .stage{max-width:760px}
     .jug .amt{font-size:1.35rem}
@@ -203,6 +217,11 @@
 </div>
 
 <div class="stage" id="stage"></div>
+
+<div class="update" id="updateBar" hidden>
+  <span>Ny version finns</span>
+  <button class="primary" id="btnUpdate">Ladda om</button>
+</div>
 
 <div class="controls">
   <button id="btnUndo">Ångra</button>
@@ -509,8 +528,34 @@ loadLevel(unlocked(save.current)?save.current:0);
 /* ================= Service worker ================= */
 /* Misslyckas tyst på file:// och andra osäkra ursprung. */
 if('serviceWorker' in navigator){
-  window.addEventListener('load',()=>{
-    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  window.addEventListener('load',async()=>{
+    let wantReload=false;
+    /* controllerchange utlöses även när den allra första workern tar över,
+       så vi laddar bara om när användaren faktiskt bett om det. */
+    navigator.serviceWorker.addEventListener('controllerchange',()=>{
+      if(wantReload)location.reload();
+    });
+    try{
+      /* updateViaCache:'none' gör att sw.js alltid hämtas från servern,
+         annars kan HTTP-cachen dölja att en ny version finns. */
+      const reg=await navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'});
+      const bar=document.getElementById('updateBar');
+      const offer=w=>{
+        if(!w||!navigator.serviceWorker.controller)return; /* inte en uppdatering, utan första installationen */
+        bar.hidden=false;
+        document.getElementById('btnUpdate').onclick=()=>{
+          wantReload=true;bar.hidden=true;
+          w.postMessage({type:'SKIP_WAITING'});
+        };
+      };
+      if(reg.waiting)offer(reg.waiting);
+      reg.addEventListener('updatefound',()=>{
+        const w=reg.installing;
+        if(!w)return;
+        w.addEventListener('statechange',()=>{if(w.state==='installed')offer(w)});
+      });
+      reg.update().catch(()=>{});
+    }catch(e){}
   });
 }
 </script>
