@@ -43,7 +43,8 @@
     --foam:#D8FFF6;        /* wave foam */
     --chalk:#F3EFFF;       /* text, lavender white */
     --haze:#A79FC9;        /* secondary text */
-    --amber:#FFB458;       /* stars and hint */
+    --amber:#FFB458;       /* stars */
+    --hint:#FFB458;        /* the hint flash on the vessel */
     --gold:#FFCE7A;        /* goal reached */
     --mint:#8FE3A8;        /* "Easy" badge */
     --hard:#FF8A93;        /* "Hard" badge */
@@ -78,6 +79,7 @@
     --chalk:#F9EDF1;
     --haze:#BE9AA8;
     --amber:#FFC46A;
+    --hint:#FFC46A;
     --gold:#FFD79A;
     --mint:#A9D6AE;
     --hard:#FF8E63;
@@ -95,6 +97,48 @@
     --panel-edge:rgba(255,235,242,.13);
     --card:rgba(70,12,30,.94);
     --scrim:rgba(24,4,12,.62);
+  }
+  /* The Beerz skin: a German stein of lager, measured in S for Seidel.
+     Third in the same chain of three taps. Two values a straight swap
+     cannot carry, both for the same reason - the liquid itself is now
+     amber, so anything that used to signal against turquoise or ruby by
+     being golden has nowhere to stand:
+
+     --hint  the hint flash strokes the vessel, and an amber outline over
+             amber beer is no flash at all. It was --amber everywhere
+             until now, which is why it has just become its own token.
+     --gold  marks the amount the level asked for. Beer is gold already,
+             so the goal state moves the other way instead - up into the
+             pale, foam-lit cream - rather than to a warmer gold nobody
+             could tell from --amount. */
+  html[data-skin="beer"]{
+    --night:#140C05;
+    --indigo:#2A1A0B;
+    --horizon:#6B4116;
+    --water-hi:#F5C242;
+    --water-lo:#A85E10;
+    --foam:#FFF6E4;
+    --chalk:#FBF3E6;
+    --haze:#BFA983;
+    --amber:#FFC85E;
+    /* Cold on purpose: it is the one cue that must never be mistaken for
+       beer, and white is already what a selected stein turns. */
+    --hint:#7ED8FF;
+    --gold:#FFF3C0;
+    --mint:#9BD98A;
+    --hard:#FF8A6B;
+    /* Gold on a brown card keeps its distance, unlike ruby on burgundy,
+       so a cleared level can simply be the liquid here. */
+    --done:#F5C242;
+    --glass:rgba(255,248,235,.62);
+    --tint:rgba(255,245,225,.07);
+    --etch:rgba(255,245,225,.55);
+    --amount:#F5C242;
+    --on-primary:#3A2205;
+    --panel:rgba(255,255,255,.06);
+    --panel-edge:rgba(255,236,205,.14);
+    --card:rgba(58,34,12,.94);
+    --scrim:rgba(20,10,3,.62);
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
   html,body{height:100%}
@@ -133,9 +177,11 @@
     background:linear-gradient(135deg,var(--foam),var(--water-hi));
     transition:transform .5s cubic-bezier(.5,1.6,.5,1);
   }
-  /* The droplet tips over on the way into the wine skin: it pours,
-     it does not toggle. */
+  /* The droplet turns with the skin: it pours over into the wine, and
+     comes up round as a bubble of foam in the beer. It keeps turning the
+     same way through the chain rather than toggling back and forth. */
   html[data-skin="wine"] .droplet{transform:rotate(225deg) translateY(-4px)}
+  html[data-skin="beer"] .droplet{border-radius:50%;transform:rotate(405deg) translateY(-4px)}
   /* Lighting up rather than moving: the droplet's transform already
      carries the tipped state, and a keyframe on it would snap the skin. */
   .droplet.ping{animation:ping .3s ease}
@@ -176,10 +222,12 @@
      and the far half of the rim is the cue that reads as an opening. */
   .jug .stemshape{fill:var(--tint);stroke:var(--glass);stroke-width:2.2;stroke-linejoin:round;transition:stroke .2s}
   .jug .rimback{fill:none;stroke:var(--glass);stroke-opacity:.45;stroke-width:2;transition:stroke .2s}
+  /* The ring pressed round the neck of a stein, above the dimples. */
+  .jug .glassband{fill:none;stroke:var(--glass);stroke-opacity:.75;stroke-width:2.2;transition:stroke .2s}
   .jug.sel .glassbody{stroke:#FFFFFF;stroke-width:3.5;filter:drop-shadow(0 0 10px rgba(216,255,246,.75));filter:drop-shadow(0 0 10px color-mix(in srgb,var(--foam) 75%,transparent))}
-  .jug.sel .glasshandle,.jug.sel .stemshape,.jug.sel .rimback{stroke:#FFFFFF}
-  .jug.hintflash .glassbody{stroke:var(--amber);stroke-width:3.5;filter:drop-shadow(0 0 10px rgba(255,180,88,.8))}
-  .jug.hintflash .glasshandle,.jug.hintflash .stemshape,.jug.hintflash .rimback{stroke:var(--amber)}
+  .jug.sel .glasshandle,.jug.sel .stemshape,.jug.sel .rimback,.jug.sel .glassband{stroke:#FFFFFF}
+  .jug.hintflash .glassbody{stroke:var(--hint);stroke-width:3.5;filter:drop-shadow(0 0 10px rgba(255,180,88,.8));filter:drop-shadow(0 0 10px color-mix(in srgb,var(--hint) 80%,transparent))}
+  .jug.hintflash .glasshandle,.jug.hintflash .stemshape,.jug.hintflash .rimback,.jug.hintflash .glassband{stroke:var(--hint)}
   .jug .etch{fill:var(--etch);font-family:'Fredoka',sans-serif;font-weight:600;pointer-events:none}
   .jug.deny{animation:shake .3s}
   @keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
@@ -209,6 +257,19 @@
     80%{opacity:.18}
     100%{transform:translateY(0);opacity:0}
   }
+
+  /* The stein's handle is a fistful of glass, not a jug's thumb loop. */
+  html[data-skin="beer"] .glasshandle{stroke-width:9}
+  /* The head on a stein of beer. It hangs inside the surface group, so it
+     rides the beer line for free and render() never has to know which
+     skin is on; the only thing scripted is the surge on a fresh pour
+     (runHead). transform-box:fill-box puts the origin on the foam's own
+     bottom edge - the beer line - so the head grows up into the stein
+     instead of about the middle of the viewBox, which is where an SVG
+     element's transform-origin would otherwise land. */
+  .headg{transform-box:fill-box;transform-origin:50% 100%}
+  .headg.surge{animation:head 1.6s cubic-bezier(.25,.8,.3,1) both}
+  @keyframes head{from{transform:scaleY(1.65)}to{transform:scaleY(1)}}
 
   .controls{width:100%;max-width:520px;display:flex;gap:8px;margin-top:8px}
   button{
@@ -296,6 +357,7 @@
   }
   .wipe[hidden]{display:none}
   .wipe.to-wine{background:radial-gradient(130% 90% at 50% -10%,#63213F 0%,#2C0D1D 45%,#150610 100%)}
+  .wipe.to-beer{background:radial-gradient(130% 90% at 50% -10%,#6B4116 0%,#2A1A0B 45%,#140C05 100%)}
   .wipe.to-water{background:radial-gradient(130% 90% at 50% -10%,#4A3A78 0%,#241E44 45%,#171331 100%)}
   .wipe.go{transition:clip-path .62s cubic-bezier(.4,0,.2,1);clip-path:circle(150% at var(--ox,80%) var(--oy,4%))}
   .wipe.fade{transition:opacity .45s ease;opacity:0}
@@ -442,16 +504,20 @@ async function askPersist(){
 }
 
 /* ================= Skins =================
-   Two vessels, one game. Everything skin-dependent is listed here: the
+   Three vessels, one game. Everything skin-dependent is listed here: the
    colours live in CSS under html[data-skin], the words and the drawing
    live below. Nothing about the puzzle, the level bank or the saved stars
-   changes with the skin, so switching mid-level is safe. */
-const UNIT={water:'L',wine:'U'};
-const VESSEL={water:'jug',wine:'glass'};
-const VERB={water:'Solved',wine:'Poured'};
-const BRAND={water:'Jugz',wine:'Winez'};
-const THEME={water:'#241E44',wine:'#2C0D1D'};
-let skin=(save.skin==='wine')?'wine':'water';
+   changes with the skin, so switching mid-level is safe.
+
+   SKINS is the order the hidden switch walks, so a fourth skin is a row
+   in each table and an entry here - nothing else. */
+const SKINS=['water','wine','beer'];
+const UNIT={water:'L',wine:'U',beer:'S'};      /* S for Seidel */
+const VESSEL={water:'jug',wine:'glass',beer:'stein'};
+const VERB={water:'Solved',wine:'Poured',beer:'Tapped'};
+const BRAND={water:'Jugz',wine:'Winez',beer:'Beerz'};
+const THEME={water:'#241E44',wine:'#2C0D1D',beer:'#2A1A0B'};
+let skin=SKINS.includes(save.skin)?save.skin:'water';
 
 /* ================= Game state ================= */
 let li=0, caps=[], state=[], history=[], moves=0, opt=0, goal=0, sel=-1, busy=false;
@@ -493,11 +559,71 @@ function loadLevel(i){
 }
 
 /* ================= Rendering ================= */
-function wavePath(w2,lam,amp){
+function wavePath(w2,lam,amp,depth){
   let d='M0 0';let x=0,s=-1;
   while(x<w2){d+=' q '+(lam/4)+' '+(s*amp)+' '+(lam/2)+' 0';x+=lam/2;s*=-1;}
-  d+=' V 7 H 0 Z';
+  d+=' V '+(depth||7)+' H 0 Z';
   return d;
+}
+/* ---- The liquid surface, shared by every skin ----
+   The surface of a liquid in a round vessel is an ellipse, so the line
+   where it meets the glass has to bow the way the rim does. A flat top
+   edge under a curved rim was the one thing that kept the vessels
+   reading as flat cut-outs.
+
+   Drawn in the surface group's own coordinates - y=0 is the liquid
+   line, x is the vessel's centre - and only at its widest: render()
+   scales the whole group to the width the vessel actually has at the
+   level the liquid stands, which is the entire difference between a
+   stein and the bowl of a wine glass.
+
+   Three pieces. The ellipse is the top face of the liquid, the near half
+   of it hanging below the line. The wings fill the two corners the near
+   half leaves standing, down to the level where the body rect takes
+   over, so the liquid's own top edge follows the arc rather than the
+   line. The drifting waves are clipped to the ellipse, so what used to
+   be a straight foam band now ripples inside the surface. */
+function surfaceSVG(idx,cx,rx,ry,lam){
+  const w2=Math.round(2*rx)+2*lam;
+  const x0=(cx-rx).toFixed(1),x1=(cx+rx).toFixed(1),R=rx.toFixed(1),Y=ry.toFixed(1);
+  const out=(cx+rx*1.35).toFixed(1),in_=(cx-rx*1.35).toFixed(1);
+  const wing=`M ${in_} ${Y} L ${in_} 0 L ${x0} 0 A ${R} ${Y} 0 0 0 ${x1} 0 L ${out} 0 L ${out} ${Y} Z`;
+  const near=`M ${x1} 0 A ${R} ${Y} 0 0 1 ${x0} 0`;
+  const far=`M ${x0} 0 A ${R} ${Y} 0 0 1 ${x1} 0`;
+  const wx=(cx-rx-lam).toFixed(1);
+  return `<clipPath id="sclip${idx}"><ellipse cx="${cx}" cy="0" rx="${R}" ry="${Y}"/></clipPath>
+        <path d="${wing}" fill="var(--water-hi)"/>
+        <ellipse cx="${cx}" cy="0" rx="${R}" ry="${Y}" fill="var(--water-hi)"/>
+        <g clip-path="url(#sclip${idx})">
+          <g class="wavedrift rev" style="--lam:${lam}px;--wd:5.2s;transform-origin:0 0">
+            <path d="${wavePath(w2,lam,1.5,ry+2)}" fill="var(--foam)" fill-opacity=".22" transform="translate(${wx} ${(-ry*0.15).toFixed(1)})"/>
+          </g>
+          <g class="wavedrift" style="--lam:${lam}px;--wd:4.2s">
+            <path d="${wavePath(w2,lam,1.9,ry+2)}" fill="var(--foam)" fill-opacity=".5" transform="translate(${wx} ${(ry*0.3).toFixed(1)})"/>
+          </g>
+        </g>
+        <path d="${far}" fill="none" stroke="var(--foam)" stroke-opacity=".28" stroke-width="1.6"/>
+        <path d="${near}" fill="none" stroke="var(--foam)" stroke-opacity=".7" stroke-width="2"/>`;
+}
+/* Nine samples of the inside half-width of the vessel, evenly spaced down
+   the band the liquid moves through and given relative to the widest of
+   them. Published as data-prof next to the band itself; render() reads it
+   to size the surface. Any future vessel owes one. */
+function bandProfile(top,bot,halfAt){
+  const s=[];
+  for(let k=0;k<=8;k++)s.push(halfAt(top+(bot-top)*k/8));
+  const rx=Math.max(...s);
+  return {rx:+rx.toFixed(1),prof:s.map(v=>(v/rx).toFixed(3)).join(',')};
+}
+/* Straight-line interpolation through a handful of (y, half-width)
+   anchors - enough for the vessels whose walls are drawn by eye. */
+function halfLerp(a,y){
+  if(y<=a[0][0])return a[0][1];
+  for(let k=1;k<a.length;k++)if(y<=a[k][0]){
+    const[y0,h0]=a[k-1],[y1,h1]=a[k];
+    return h0+(h1-h0)*(y-y0)/(y1-y0);
+  }
+  return a[a.length-1][1];
 }
 function jugSVG(idx,cap){
   const maxCap=Math.max(...caps);
@@ -505,9 +631,14 @@ function jugSVG(idx,cap){
   const bodyW=Math.round(64+(cap/maxCap)*36);
   const W=bodyW+30;
   const bx=6,x2=bx+bodyW;
+  /* The mouth is an ellipse too, now that the water in it is one: the
+     near half closes the body path, the far half is the faint stroke
+     below - the same two-piece rim the glass and the stein carry. A
+     straight mouth over a curved surface reads as a fold in the jug. */
+  const mrx=((x2-8)-(bx+15))/2,mry=Math.max(4,Math.round(mrx*0.17));
   const path=`M ${bx} 14
     Q ${bx+7} 9 ${bx+15} 13
-    L ${x2-8} 15
+    A ${mrx.toFixed(1)} ${mry} 0 0 0 ${x2-8} 15
     Q ${x2-1} 16 ${x2-2} 25
     Q ${x2-9} ${Math.round(H*0.32)} ${x2-3} ${Math.round(H*0.55)}
     Q ${x2+3} ${Math.round(H*0.76)} ${x2-7} ${H-15}
@@ -521,7 +652,6 @@ function jugSVG(idx,cap){
     C ${x2+22} ${Math.round(H*0.28)} ${x2+22} ${Math.round(H*0.52)} ${x2-5} ${Math.round(H*0.62)}`;
   const fs=Math.max(17,Math.round(H*0.13));
   const lam=Math.max(24,Math.round(bodyW/2));
-  const w2=bodyW+2*lam;
   let bubbles='';
   for(let k=0;k<4;k++){
     const cx=bx+12+((idx*37+k*53)%(bodyW-24));
@@ -529,10 +659,19 @@ function jugSVG(idx,cap){
     bubbles+='<circle class="waterbub" cx="'+cx+'" cy="'+(H-14)+'" r="'+r
       +'" fill="rgba(255,255,255,.4)" style="--bh:'+H+'px;--bd:'+(4.5+k*1.6+idx*0.7).toFixed(1)+'s;--bdl:'+(k*1.3).toFixed(1)+'s"/>';
   }
-  /* data-top/data-bot is the band the liquid moves through. The jug is
-     filled to the brim; a wine glass is not (see glassSVG), so render()
-     reads it off the SVG instead of hardcoding it. */
-  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" data-top="20" data-bot="${H-10}">
+  /* data-top/data-bot is the band the liquid moves through, and data-rx
+     /-ry/-cx/-prof is the shape of its surface (see surfaceSVG). The jug
+     fills nearly to the brim; a wine glass does not, so render() reads
+     both off the SVG instead of hardcoding them. The band now starts a
+     little lower than the mouth, to leave the far side of the surface
+     ellipse somewhere to be. */
+  const cx=bx+bodyW/2,top=24,bot=H-10;
+  const{rx,prof}=bandProfile(top,bot,y=>halfLerp([[14,(bodyW-8)/2],[26,(bodyW-4)/2],
+    [H*0.32,(bodyW-9)/2],[H*0.55,(bodyW-6)/2],[H*0.76,(bodyW+3)/2],
+    [H-15,(bodyW-12)/2],[H-9,(bodyW-30)/2]],y));
+  const sry=rx*0.17;
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" data-top="${top}" data-bot="${bot}"
+    data-cx="${cx}" data-rx="${rx}" data-ry="${sry.toFixed(1)}" data-prof="${prof}">
     <defs>
       <clipPath id="clip${idx}"><path d="${path}"/></clipPath>
       <clipPath id="wclip${idx}"><rect class="waterrect" id="wrect${idx}" x="0" y="${H}" width="${W}" height="0"/></clipPath>
@@ -548,16 +687,12 @@ function jugSVG(idx,cap){
     <g clip-path="url(#clip${idx})"><g clip-path="url(#wclip${idx})">${bubbles}</g></g>
     <g clip-path="url(#clip${idx})">
       <g class="surfg" id="surfg${idx}" style="transform:translateY(${H}px);opacity:0">
-        <g class="wavedrift rev" style="--lam:${lam}px;--wd:5.2s;transform-origin:0 0">
-          <path d="${wavePath(w2,lam,2)}" fill="var(--water-hi)" fill-opacity=".5" transform="translate(-${lam} 2)"/>
-        </g>
-        <g class="wavedrift" style="--lam:${lam}px;--wd:4.2s">
-          <path d="${wavePath(w2,lam,2.6)}" fill="var(--foam)" fill-opacity=".85" transform="translate(-${lam} 0)"/>
-        </g>
+        ${surfaceSVG(idx,cx,rx,sry,lam)}
       </g>
     </g>
     <path d="M ${bx+12} 32 Q ${bx+6} ${Math.round(H*0.55)} ${bx+13} ${H-24}"
       fill="none" stroke="rgba(255,255,255,.45)" stroke-width="3" stroke-linecap="round"/>
+    <path class="rimback" d="M ${bx+15} 13 A ${mrx.toFixed(1)} ${mry} 0 0 1 ${x2-8} 15"/>
     <path class="glassbody" d="${path}"/>
     <text class="etch" x="${bx+bodyW/2}" y="${Math.round(H*0.60)}" text-anchor="middle" font-size="${fs}">${cap} ${UNIT.water}</text>
   </svg>`;
@@ -608,7 +743,6 @@ function glassSVG(idx,cap){
       ${(g.cx-g.rimR*0.34).toFixed(1)} ${g.by-10}`;
   const fs=Math.max(14,Math.round(g.bowlW*0.24));
   const lam=Math.max(24,Math.round(g.bowlW/2));
-  const w2=Math.round(2*g.belly)+2*lam;
   /* Only the horizontal placing and the stagger are fixed here. How far a
      tear falls is not knowable until a pour happens, so runLegs writes
      --ls and --lg. */
@@ -620,8 +754,22 @@ function glassSVG(idx,cap){
       +(0.45+k*0.16+(idx%3)*0.05).toFixed(2)+'s"/>';
   }
   /* The band stops at the bottom of the bowl: the jug's band would pour
-     wine down into the stem. */
-  return `<svg width="${g.W}" height="${g.H}" viewBox="0 0 ${g.W} ${g.H}" data-top="${g.rimY+2}" data-bot="${g.by-3}">
+     wine down into the stem. The bowl is the vessel whose width changes
+     most as the level moves, so its profile is measured off the very
+     cubic the outline is drawn with rather than guessed at. */
+  const byz=(t,p0,p1,p2,p3)=>{const u=1-t;return u*u*u*p0+3*u*u*t*p1+3*u*t*t*p2+t*t*t*p3;};
+  const top=g.rimY+g.ry+2,bot=g.by-3;
+  const{rx,prof}=bandProfile(top,bot,y=>{
+    let lo=0,hi=1;
+    for(let k=0;k<24;k++){
+      const m=(lo+hi)/2;
+      if(byz(m,g.rimY,g.rimY+g.bowlH*0.36,g.rimY+g.bowlH*0.74,g.by)<y)lo=m;else hi=m;
+    }
+    return Math.max(3,g.cx-byz((lo+hi)/2,g.cx-g.rimR,g.cx-g.belly,g.cx-g.belly*0.90,g.cx-n));
+  });
+  const sry=rx*0.17;
+  return `<svg width="${g.W}" height="${g.H}" viewBox="0 0 ${g.W} ${g.H}" data-top="${top}" data-bot="${bot}"
+    data-cx="${g.cx}" data-rx="${rx}" data-ry="${sry.toFixed(1)}" data-prof="${prof}">
     <defs>
       <clipPath id="clip${idx}"><path d="${bowl}"/></clipPath>
       <clipPath id="wclip${idx}"><rect class="waterrect" id="wrect${idx}" x="0" y="${g.H}" width="${g.W}" height="0"/></clipPath>
@@ -637,12 +785,7 @@ function glassSVG(idx,cap){
       x="0" y="${g.H}" width="${g.W}" height="0" fill="url(#wg${idx})"/>
     <g clip-path="url(#clip${idx})">
       <g class="surfg" id="surfg${idx}" style="transform:translateY(${g.H}px);opacity:0">
-        <g class="wavedrift rev" style="--lam:${lam}px;--wd:5.2s;transform-origin:0 0">
-          <path d="${wavePath(w2,lam,2)}" fill="var(--water-hi)" fill-opacity=".5" transform="translate(-${lam} 2)"/>
-        </g>
-        <g class="wavedrift" style="--lam:${lam}px;--wd:4.2s">
-          <path d="${wavePath(w2,lam,2.6)}" fill="var(--foam)" fill-opacity=".85" transform="translate(-${lam} 0)"/>
-        </g>
+        ${surfaceSVG(idx,g.cx,rx,sry,lam)}
       </g>
       <g class="legsg" id="legsg${idx}" style="transform:translateY(${g.H}px)">${legs}</g>
     </g>
@@ -652,8 +795,169 @@ function glassSVG(idx,cap){
     <text class="etch" x="${g.cx}" y="${Math.round(g.rimY+g.bowlH*0.62)}" text-anchor="middle" font-size="${fs}">${cap} ${UNIT.wine}</text>
   </svg>`;
 }
+/* ---- Beerz: the German stein ----
+   A dimpled Masskrug: near-straight walls with a slight draw towards the
+   base, a thick D-handle, pressed dimples across the glass and a head of
+   foam on top. Capacity drives height, width and the depth of the head
+   together. The element ids are jugSVG's and glassSVG's again, so
+   render() stays skin-blind.
+
+   Two things are the stein's own. The band stops well short of the rim -
+   data-top leaves the head room to stand inside the glass, the way the
+   wine band stops at the bottom of the bowl - and the foam sits inside
+   surfg rather than beside it, so it rides the beer line with no help
+   from render(). The bubbles come back here: fizz is wrong for a still
+   red and exactly right for a lager. */
+function steinGeom(cap,maxCap){
+  const r=cap/maxCap;
+  const bodyW=Math.round(68+r*44);
+  const H=Math.round(146+r*104);
+  const rimY=14;                          /* centre of the rim ellipse   */
+  const ry=Math.round(6+r*3);             /* rim ellipse, minor radius   */
+  const bx=8,x2=bx+bodyW;
+  const baseY=H-16;                       /* the inside of the base      */
+  const taper=Math.round(bodyW*0.05);     /* the walls draw in a little  */
+  const head=Math.round(12+r*9);          /* the foam head, at rest      */
+  const proj=Math.round(bodyW*0.36);      /* how far the handle reaches  */
+  const W=bodyW+Math.round(bodyW*0.30)+18;
+  return {r,bodyW,H,rimY,ry,bx,x2,baseY,taper,head,proj,W,rimR:bodyW/2};
+}
+/* The top of the head, lumpy rather than level: a straight edge reads as
+   a lid. Drawn in the surface group's own coordinates, where y=0 is the
+   beer line and the foam stands above it. The underside is the near half
+   of the surface ellipse, not a line: the head sits on the beer, so it
+   hangs down in the middle exactly as far as the beer does. */
+function foamPath(x0,x1,hh,cx,rx,ry){
+  const n=4,step=(x1-x0)/n;
+  let d='M '+x0+' 0 L '+x0+' '+(-hh*0.62).toFixed(1);
+  for(let k=0;k<n;k++){
+    const sx=x0+k*step;
+    d+=' Q '+(sx+step*0.25).toFixed(1)+' '+(-hh*(k%2?1.12:0.94)).toFixed(1)
+      +' '+(sx+step*0.5).toFixed(1)+' '+(-hh*0.82).toFixed(1)
+      +' Q '+(sx+step*0.76).toFixed(1)+' '+(-hh*(k%2?0.58:0.72)).toFixed(1)
+      +' '+(sx+step).toFixed(1)+' '+(-hh*0.80).toFixed(1);
+  }
+  d+=' L '+x1+' 0 L '+(cx+rx).toFixed(1)+' 0'
+    +' A '+rx.toFixed(1)+' '+ry.toFixed(1)+' 0 0 1 '+(cx-rx).toFixed(1)+' 0 Z';
+  return d;
+}
+function steinSVG(idx,cap){
+  const g=steinGeom(cap,Math.max(...caps));
+  const {bx,x2,rimY,ry,baseY,taper,bodyW,H,W,rimR,proj}=g;
+  const body=`M ${bx} ${rimY}
+    L ${bx+taper} ${baseY-12}
+    Q ${bx+taper} ${baseY} ${bx+taper+12} ${baseY}
+    L ${x2-taper-12} ${baseY}
+    Q ${x2-taper} ${baseY} ${x2-taper} ${baseY-12}
+    L ${x2} ${rimY}
+    A ${rimR} ${ry} 0 0 1 ${bx} ${rimY} Z`;
+  /* The far half of the rim, faint - the same trick as the wine glass:
+     without it the mouth of the stein reads as a flat top. */
+  const rimBack=`M ${bx} ${rimY} A ${rimR} ${ry} 0 0 1 ${x2} ${rimY}`;
+  /* The ring round the neck, where the pressed part of the glass starts.
+     It runs the other way from the far half of the rim: this is the near
+     side of a band wrapped round the mug, so it bows downwards, and it
+     bows less than the rim does because it is further below the eye. */
+  const bandY=rimY+Math.round((baseY-rimY)*0.13);
+  const band=`M ${bx+1} ${bandY} A ${rimR} ${Math.round(ry*0.62)} 0 0 0 ${x2-1} ${bandY}`;
+  const wall=baseY-rimY;
+  /* A stein is carried by the fist, so the handle is a wide D standing
+     well off the wall - not the thumb loop a jug gets. It is also short
+     and sits low: it grips the bottom half of the mug, nowhere near the
+     rim, which is what keeps it from reading as a jug handle. */
+  const hy1=Math.round(rimY+wall*0.36),hy2=Math.round(rimY+wall*0.76);
+  const handle=`M ${x2-5} ${hy1}
+    C ${x2+proj} ${hy1-4} ${x2+proj} ${hy2+4} ${x2-5} ${hy2}`;
+  const shine=`M ${bx+12} ${rimY+26} Q ${bx+6} ${Math.round(rimY+wall*0.55)} ${bx+14} ${baseY-26}`;
+  const fs=Math.max(17,Math.round(H*0.12));
+  const lam=Math.max(24,Math.round(bodyW/2));
+  let bubbles='';
+  for(let k=0;k<4;k++){
+    const cx=bx+12+((idx*37+k*53)%Math.max(12,bodyW-24));
+    const r=(1.6+((idx+k)%3)*0.7).toFixed(1);
+    bubbles+='<circle class="waterbub" cx="'+cx+'" cy="'+(baseY-4)+'" r="'+r
+      +'" fill="rgba(255,255,255,.4)" style="--bh:'+H+'px;--bd:'+(4.5+k*1.6+idx*0.7).toFixed(1)+'s;--bdl:'+(k*1.3).toFixed(1)+'s"/>';
+  }
+  /* The pressed dimples of a Masskrug, drawn over the beer as well as
+     over the empty glass: they are the wall, not a decoration on it.
+     Big and close-packed, three to a row with the offset row running off
+     both edges - the half dimples the silhouette cuts are what make the
+     wall read as curved rather than as a panel of dots.
+
+     The rows are laid out to a count, not to a fixed pitch: even the
+     smallest mug is worth three rows, and one row is always given up to
+     the capacity mark, so four is where the count starts. */
+  let dimples='';
+  /* The top quarter of the glass stays smooth: a real Masskrug is
+     pressed from below the neck ring down, and it is also where the head
+     sits. */
+  const top=rimY+Math.max(30,Math.round(wall*0.28)),bot=baseY-20,avail=bot-top,drMax=bodyW*0.16;
+  const rowN=Math.max(4,Math.round(avail/(2.1*drMax))+1);
+  const gap=Math.min(2.1*drMax,avail/(rowN-1)),dr=Math.min(drMax,gap/2.1);
+  const start=top+(avail-(rowN-1)*gap)/2;
+  /* The band the capacity is etched on stays smooth, the way the fill
+     mark on a real Masskrug does - dimpling straight through the number
+     is what makes it hard to read. The number takes a whole row rather
+     than a slice of one, so the gap it sits in looks deliberate. */
+  const skip=Math.max(1,Math.round((rowN-1)*0.62));
+  const etchY=Math.round(start+skip*gap+fs*0.34);
+  for(let ri=0;ri<rowN;ri++){
+    if(ri===skip)continue;
+    const dy=(start+ri*gap).toFixed(1);
+    const at=(ri%2)?[0,1/3,2/3,1]:[1/6,0.5,5/6];
+    for(const f of at)
+      dimples+='<ellipse cx="'+(bx+bodyW*f).toFixed(1)+'" cy="'+dy+'" rx="'+dr.toFixed(1)+'" ry="'+(dr*0.94).toFixed(1)
+        +'" fill="rgba(255,255,255,.06)" stroke="rgba(255,255,255,.19)" stroke-width="1.5"/>';
+  }
+  const hh=g.head;
+  const cx=bx+bodyW/2,bandTop=rimY+hh+6,bandBot=baseY-3;
+  const{rx,prof}=bandProfile(bandTop,bandBot,y=>{
+    const t=Math.max(0,Math.min(1,(y-rimY)/wall));
+    return Math.max(4,(bodyW-2*taper*t)/2-Math.max(0,y-(baseY-12))*0.9);
+  });
+  const sry=rx*0.17;
+  let holes='';
+  for(let k=0;k<5;k++){
+    const hx=(bx+8+((idx*23+k*41)%Math.max(12,bodyW-16))).toFixed(1);
+    holes+='<circle cx="'+hx+'" cy="'+(-hh*(0.28+0.14*(k%3))).toFixed(1)+'" r="'
+      +(1.5+(k%3)*0.5).toFixed(1)+'" fill="var(--water-lo)" fill-opacity=".16"/>';
+  }
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" data-top="${bandTop}" data-bot="${bandBot}"
+    data-cx="${cx}" data-rx="${rx}" data-ry="${sry.toFixed(1)}" data-prof="${prof}">
+    <defs>
+      <clipPath id="clip${idx}"><path d="${body}"/></clipPath>
+      <clipPath id="wclip${idx}"><rect class="waterrect" id="wrect${idx}" x="0" y="${H}" width="${W}" height="0"/></clipPath>
+      <linearGradient id="wg${idx}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="var(--water-hi)"/>
+        <stop offset="1" stop-color="var(--water-lo)"/>
+      </linearGradient>
+    </defs>
+    <path class="glasshandle" d="${handle}"/>
+    <path d="${body}" fill="var(--tint)"/>
+    <rect class="waterrect" id="water${idx}" clip-path="url(#clip${idx})"
+      x="0" y="${H}" width="${W}" height="0" fill="url(#wg${idx})"/>
+    <g clip-path="url(#clip${idx})"><g clip-path="url(#wclip${idx})">${bubbles}</g></g>
+    <g clip-path="url(#clip${idx})">
+      <g class="surfg" id="surfg${idx}" style="transform:translateY(${H}px);opacity:0">
+        ${surfaceSVG(idx,cx,rx,sry,lam)}
+        <g class="headg" id="headg${idx}">
+          <path d="${foamPath(bx-3,x2+3,hh,cx,rx,sry)}" fill="var(--foam)"/>
+          ${holes}
+        </g>
+      </g>
+      ${dimples}
+    </g>
+    <path d="${shine}" fill="none" stroke="rgba(255,255,255,.42)" stroke-width="3" stroke-linecap="round"/>
+    <path class="rimback" d="${rimBack}"/>
+    <path class="glassband" d="${band}"/>
+    <path class="glassbody" d="${body}"/>
+    <text class="etch" x="${bx+bodyW/2}" y="${etchY}" text-anchor="middle" font-size="${fs}">${cap} ${UNIT.beer}</text>
+  </svg>`;
+}
 function vesselSVG(idx,cap){
-  return (skin==='wine')?glassSVG(idx,cap):jugSVG(idx,cap);
+  if(skin==='wine')return glassSVG(idx,cap);
+  if(skin==='beer')return steinSVG(idx,cap);
+  return jugSVG(idx,cap);
 }
 
 function buildJugs(){
@@ -686,20 +990,38 @@ function fitJugs(){
 }
 window.addEventListener('resize',fitJugs);
 
+/* How wide the vessel is at height y, from the profile it published:
+   1 at its widest, and as little as a tenth of that at the bottom of a
+   wine glass. */
+function widthAt(svg,y){
+  const p=(svg.dataset.prof||'1').split(',').map(Number);
+  if(p.length<2)return p[0]||1;
+  const topY=+svg.dataset.top,botY=+svg.dataset.bot;
+  const t=Math.max(0,Math.min(1,(y-topY)/(botY-topY)))*(p.length-1);
+  const k=Math.min(p.length-2,Math.floor(t));
+  return p[k]+(p[k+1]-p[k])*(t-k);
+}
 function render(){
   caps.forEach((cap,i)=>{
     const svg=document.querySelector('#jug'+i+' svg');
     const topY=+svg.dataset.top,botY=+svg.dataset.bot,usable=botY-topY;
     const h=(state[i]/cap)*usable;
     const y=botY-h;
+    /* The liquid line is the middle of the surface ellipse, so the body
+       of the liquid starts one half-ellipse lower: the surface group
+       fills the two corners the near half of the arc leaves standing.
+       The group is drawn at the vessel's widest and scaled to the width
+       it actually has here, which drags the sag along with it - a narrow
+       bowl gets a shallow arc, as it should. */
+    const p=widthAt(svg,y),cx=+svg.dataset.cx||0,sag=(+svg.dataset.ry||0)*p;
     const w=document.getElementById('water'+i);
-    w.setAttribute('y',y);
-    w.setAttribute('height',h);
+    w.setAttribute('y',y+sag);
+    w.setAttribute('height',Math.max(0,botY-y-sag));
     const wr=document.getElementById('wrect'+i);
     wr.setAttribute('y',y);
     wr.setAttribute('height',h);
     const sg=document.getElementById('surfg'+i);
-    sg.style.transform='translateY('+y+'px)';
+    sg.style.transform='translate('+(cx*(1-p)).toFixed(2)+'px,'+y+'px) scale('+p.toFixed(3)+')';
     sg.style.opacity=state[i]>0?1:0;
     document.getElementById('amt'+i).textContent=state[i]+' '+UNIT[skin];
     const j=document.getElementById('jug'+i);
@@ -746,6 +1068,7 @@ function tap(i){
   moves++;sel=-1;busy=true;
   render();
   runLegs(from,fell);
+  runHead(i);
   setTimeout(()=>{busy=false;checkWin();},520);
 }
 /* One run of the legs down the wall a pour just laid bare: from the level
@@ -782,6 +1105,25 @@ function runLegs(i,was){
     l.style.setProperty('--lg',(secs*(1+k*0.14)).toFixed(2)+'s');
   });
   lg.getBoundingClientRect();lg.classList.add('legs');
+}
+/* The head of a stein that has just been filled: foam stands high on a
+   fresh pour and settles over the next second and a half. The mirror of
+   the wine legs - those run down the glass poured OUT of, this one rises
+   in the stein poured INTO - and a loop would be wrong for the same
+   reason: beer at rest does not re-foam.
+
+   Nothing is measured here. The foam rides inside surfg, so it is already
+   at the new beer line; all that is scripted is the settling. Restarting
+   the animation needs the class to leave and come back with a forced
+   reflow between, and the read is getBoundingClientRect for the same
+   reason as the legs: an SVG <g> has no offsetWidth. */
+function runHead(i){
+  if(skin!=='beer')return;
+  const hg=document.getElementById('headg'+i);
+  if(!hg)return;
+  hg.classList.remove('surge');
+  hg.getBoundingClientRect();
+  hg.classList.add('surge');
 }
 function deny(i){
   const j=document.getElementById('jug'+i);
@@ -827,9 +1169,11 @@ document.getElementById('btnNext').onclick=()=>loadLevel(li+1);
 document.getElementById('btnReplay').onclick=()=>loadLevel(li);
 
 /* ================= Switching skin =================
-   Hidden on purpose: three taps on the logo inside 1.2 s. One tap would
-   fire by accident, and an entry in the level screen would give the joke
-   away before anyone found it. */
+   Hidden on purpose: three taps on the logo, each following the one
+   before it. One tap would fire by accident, and an entry in the level
+   screen would give the joke away before anyone found it. The switch
+   walks SKINS in order rather than toggling, so three taps more carry on
+   to the next skin and eventually back to the water. */
 function paintSkin(){
   document.documentElement.dataset.skin=skin;
   document.getElementById('brand').textContent=BRAND[skin];
@@ -840,14 +1184,14 @@ function applySkin(next){
   skin=next;
   save.skin=skin;persist();
   paintSkin();labelGoal();
-  buildJugs();render();     /* the two skins share ids, not geometry */
+  buildJugs();render();     /* the skins share ids, not geometry */
 }
 
 const REDUCED=window.matchMedia('(prefers-reduced-motion:reduce)').matches;
 let swapping=false;
 function swapSkin(){
   if(swapping||busy)return false;
-  const next=(skin==='wine')?'water':'wine';
+  const next=SKINS[(SKINS.indexOf(skin)+1)%SKINS.length];
   if(REDUCED){applySkin(next);return true;}
   swapping=true;
   /* A circle of the incoming backdrop grows out of the droplet, the skin
@@ -856,7 +1200,7 @@ function swapSkin(){
   const d=document.getElementById('droplet').getBoundingClientRect();
   wipe.style.setProperty('--ox',Math.round(100*(d.left+d.width/2)/window.innerWidth)+'%');
   wipe.style.setProperty('--oy',Math.round(100*(d.top+d.height/2)/window.innerHeight)+'%');
-  wipe.className='wipe '+(next==='wine'?'to-wine':'to-water');
+  wipe.className='wipe to-'+next;
   wipe.hidden=false;
   requestAnimationFrame(()=>requestAnimationFrame(()=>wipe.classList.add('go')));
   setTimeout(()=>{
