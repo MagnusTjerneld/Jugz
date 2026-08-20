@@ -222,10 +222,12 @@
      and the far half of the rim is the cue that reads as an opening. */
   .jug .stemshape{fill:var(--tint);stroke:var(--glass);stroke-width:2.2;stroke-linejoin:round;transition:stroke .2s}
   .jug .rimback{fill:none;stroke:var(--glass);stroke-opacity:.45;stroke-width:2;transition:stroke .2s}
+  /* The ring pressed round the neck of a stein, above the dimples. */
+  .jug .glassband{fill:none;stroke:var(--glass);stroke-opacity:.75;stroke-width:2.2;transition:stroke .2s}
   .jug.sel .glassbody{stroke:#FFFFFF;stroke-width:3.5;filter:drop-shadow(0 0 10px rgba(216,255,246,.75));filter:drop-shadow(0 0 10px color-mix(in srgb,var(--foam) 75%,transparent))}
-  .jug.sel .glasshandle,.jug.sel .stemshape,.jug.sel .rimback{stroke:#FFFFFF}
+  .jug.sel .glasshandle,.jug.sel .stemshape,.jug.sel .rimback,.jug.sel .glassband{stroke:#FFFFFF}
   .jug.hintflash .glassbody{stroke:var(--hint);stroke-width:3.5;filter:drop-shadow(0 0 10px rgba(255,180,88,.8));filter:drop-shadow(0 0 10px color-mix(in srgb,var(--hint) 80%,transparent))}
-  .jug.hintflash .glasshandle,.jug.hintflash .stemshape,.jug.hintflash .rimback{stroke:var(--hint)}
+  .jug.hintflash .glasshandle,.jug.hintflash .stemshape,.jug.hintflash .rimback,.jug.hintflash .glassband{stroke:var(--hint)}
   .jug .etch{fill:var(--etch);font-family:'Fredoka',sans-serif;font-weight:600;pointer-events:none}
   .jug.deny{animation:shake .3s}
   @keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
@@ -772,6 +774,12 @@ function steinSVG(idx,cap){
   /* The far half of the rim, faint - the same trick as the wine glass:
      without it the mouth of the stein reads as a flat top. */
   const rimBack=`M ${bx} ${rimY} A ${rimR} ${ry} 0 0 1 ${x2} ${rimY}`;
+  /* The ring round the neck, where the pressed part of the glass starts.
+     It runs the other way from the far half of the rim: this is the near
+     side of a band wrapped round the mug, so it bows downwards, and it
+     bows less than the rim does because it is further below the eye. */
+  const bandY=rimY+Math.round((baseY-rimY)*0.13);
+  const band=`M ${bx+1} ${bandY} A ${rimR} ${Math.round(ry*0.62)} 0 0 0 ${x2-1} ${bandY}`;
   const wall=baseY-rimY;
   /* A stein is carried by the fist, so the handle is a wide D standing
      well off the wall - not the thumb loop a jug gets. It is also short
@@ -801,9 +809,10 @@ function steinSVG(idx,cap){
      smallest mug is worth three rows, and one row is always given up to
      the capacity mark, so four is where the count starts. */
   let dimples='';
-  /* The top fifth of the glass stays smooth: a real Masskrug is pressed
-     from below the shoulder down, and it is also where the head sits. */
-  const top=rimY+Math.max(26,Math.round(wall*0.2)),bot=baseY-20,avail=bot-top,drMax=bodyW*0.16;
+  /* The top quarter of the glass stays smooth: a real Masskrug is
+     pressed from below the neck ring down, and it is also where the head
+     sits. */
+  const top=rimY+Math.max(30,Math.round(wall*0.28)),bot=baseY-20,avail=bot-top,drMax=bodyW*0.16;
   const rowN=Math.max(4,Math.round(avail/(2.1*drMax))+1);
   const gap=Math.min(2.1*drMax,avail/(rowN-1)),dr=Math.min(drMax,gap/2.1);
   const start=top+(avail-(rowN-1)*gap)/2;
@@ -859,6 +868,7 @@ function steinSVG(idx,cap){
     </g>
     <path d="${shine}" fill="none" stroke="rgba(255,255,255,.42)" stroke-width="3" stroke-linecap="round"/>
     <path class="rimback" d="${rimBack}"/>
+    <path class="glassband" d="${band}"/>
     <path class="glassbody" d="${body}"/>
     <text class="etch" x="${bx+bodyW/2}" y="${etchY}" text-anchor="middle" font-size="${fs}">${cap} ${UNIT.beer}</text>
   </svg>`;
