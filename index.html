@@ -559,11 +559,71 @@ function loadLevel(i){
 }
 
 /* ================= Rendering ================= */
-function wavePath(w2,lam,amp){
+function wavePath(w2,lam,amp,depth){
   let d='M0 0';let x=0,s=-1;
   while(x<w2){d+=' q '+(lam/4)+' '+(s*amp)+' '+(lam/2)+' 0';x+=lam/2;s*=-1;}
-  d+=' V 7 H 0 Z';
+  d+=' V '+(depth||7)+' H 0 Z';
   return d;
+}
+/* ---- The liquid surface, shared by every skin ----
+   The surface of a liquid in a round vessel is an ellipse, so the line
+   where it meets the glass has to bow the way the rim does. A flat top
+   edge under a curved rim was the one thing that kept the vessels
+   reading as flat cut-outs.
+
+   Drawn in the surface group's own coordinates - y=0 is the liquid
+   line, x is the vessel's centre - and only at its widest: render()
+   scales the whole group to the width the vessel actually has at the
+   level the liquid stands, which is the entire difference between a
+   stein and the bowl of a wine glass.
+
+   Three pieces. The ellipse is the top face of the liquid, the near half
+   of it hanging below the line. The wings fill the two corners the near
+   half leaves standing, down to the level where the body rect takes
+   over, so the liquid's own top edge follows the arc rather than the
+   line. The drifting waves are clipped to the ellipse, so what used to
+   be a straight foam band now ripples inside the surface. */
+function surfaceSVG(idx,cx,rx,ry,lam){
+  const w2=Math.round(2*rx)+2*lam;
+  const x0=(cx-rx).toFixed(1),x1=(cx+rx).toFixed(1),R=rx.toFixed(1),Y=ry.toFixed(1);
+  const out=(cx+rx*1.35).toFixed(1),in_=(cx-rx*1.35).toFixed(1);
+  const wing=`M ${in_} ${Y} L ${in_} 0 L ${x0} 0 A ${R} ${Y} 0 0 0 ${x1} 0 L ${out} 0 L ${out} ${Y} Z`;
+  const near=`M ${x1} 0 A ${R} ${Y} 0 0 1 ${x0} 0`;
+  const far=`M ${x0} 0 A ${R} ${Y} 0 0 1 ${x1} 0`;
+  const wx=(cx-rx-lam).toFixed(1);
+  return `<clipPath id="sclip${idx}"><ellipse cx="${cx}" cy="0" rx="${R}" ry="${Y}"/></clipPath>
+        <path d="${wing}" fill="var(--water-hi)"/>
+        <ellipse cx="${cx}" cy="0" rx="${R}" ry="${Y}" fill="var(--water-hi)"/>
+        <g clip-path="url(#sclip${idx})">
+          <g class="wavedrift rev" style="--lam:${lam}px;--wd:5.2s;transform-origin:0 0">
+            <path d="${wavePath(w2,lam,1.5,ry+2)}" fill="var(--foam)" fill-opacity=".22" transform="translate(${wx} ${(-ry*0.15).toFixed(1)})"/>
+          </g>
+          <g class="wavedrift" style="--lam:${lam}px;--wd:4.2s">
+            <path d="${wavePath(w2,lam,1.9,ry+2)}" fill="var(--foam)" fill-opacity=".5" transform="translate(${wx} ${(ry*0.3).toFixed(1)})"/>
+          </g>
+        </g>
+        <path d="${far}" fill="none" stroke="var(--foam)" stroke-opacity=".28" stroke-width="1.6"/>
+        <path d="${near}" fill="none" stroke="var(--foam)" stroke-opacity=".7" stroke-width="2"/>`;
+}
+/* Nine samples of the inside half-width of the vessel, evenly spaced down
+   the band the liquid moves through and given relative to the widest of
+   them. Published as data-prof next to the band itself; render() reads it
+   to size the surface. Any future vessel owes one. */
+function bandProfile(top,bot,halfAt){
+  const s=[];
+  for(let k=0;k<=8;k++)s.push(halfAt(top+(bot-top)*k/8));
+  const rx=Math.max(...s);
+  return {rx:+rx.toFixed(1),prof:s.map(v=>(v/rx).toFixed(3)).join(',')};
+}
+/* Straight-line interpolation through a handful of (y, half-width)
+   anchors - enough for the vessels whose walls are drawn by eye. */
+function halfLerp(a,y){
+  if(y<=a[0][0])return a[0][1];
+  for(let k=1;k<a.length;k++)if(y<=a[k][0]){
+    const[y0,h0]=a[k-1],[y1,h1]=a[k];
+    return h0+(h1-h0)*(y-y0)/(y1-y0);
+  }
+  return a[a.length-1][1];
 }
 function jugSVG(idx,cap){
   const maxCap=Math.max(...caps);
@@ -571,9 +631,14 @@ function jugSVG(idx,cap){
   const bodyW=Math.round(64+(cap/maxCap)*36);
   const W=bodyW+30;
   const bx=6,x2=bx+bodyW;
+  /* The mouth is an ellipse too, now that the water in it is one: the
+     near half closes the body path, the far half is the faint stroke
+     below - the same two-piece rim the glass and the stein carry. A
+     straight mouth over a curved surface reads as a fold in the jug. */
+  const mrx=((x2-8)-(bx+15))/2,mry=Math.max(4,Math.round(mrx*0.17));
   const path=`M ${bx} 14
     Q ${bx+7} 9 ${bx+15} 13
-    L ${x2-8} 15
+    A ${mrx.toFixed(1)} ${mry} 0 0 0 ${x2-8} 15
     Q ${x2-1} 16 ${x2-2} 25
     Q ${x2-9} ${Math.round(H*0.32)} ${x2-3} ${Math.round(H*0.55)}
     Q ${x2+3} ${Math.round(H*0.76)} ${x2-7} ${H-15}
@@ -587,7 +652,6 @@ function jugSVG(idx,cap){
     C ${x2+22} ${Math.round(H*0.28)} ${x2+22} ${Math.round(H*0.52)} ${x2-5} ${Math.round(H*0.62)}`;
   const fs=Math.max(17,Math.round(H*0.13));
   const lam=Math.max(24,Math.round(bodyW/2));
-  const w2=bodyW+2*lam;
   let bubbles='';
   for(let k=0;k<4;k++){
     const cx=bx+12+((idx*37+k*53)%(bodyW-24));
@@ -595,10 +659,19 @@ function jugSVG(idx,cap){
     bubbles+='<circle class="waterbub" cx="'+cx+'" cy="'+(H-14)+'" r="'+r
       +'" fill="rgba(255,255,255,.4)" style="--bh:'+H+'px;--bd:'+(4.5+k*1.6+idx*0.7).toFixed(1)+'s;--bdl:'+(k*1.3).toFixed(1)+'s"/>';
   }
-  /* data-top/data-bot is the band the liquid moves through. The jug is
-     filled to the brim; a wine glass is not (see glassSVG), so render()
-     reads it off the SVG instead of hardcoding it. */
-  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" data-top="20" data-bot="${H-10}">
+  /* data-top/data-bot is the band the liquid moves through, and data-rx
+     /-ry/-cx/-prof is the shape of its surface (see surfaceSVG). The jug
+     fills nearly to the brim; a wine glass does not, so render() reads
+     both off the SVG instead of hardcoding them. The band now starts a
+     little lower than the mouth, to leave the far side of the surface
+     ellipse somewhere to be. */
+  const cx=bx+bodyW/2,top=24,bot=H-10;
+  const{rx,prof}=bandProfile(top,bot,y=>halfLerp([[14,(bodyW-8)/2],[26,(bodyW-4)/2],
+    [H*0.32,(bodyW-9)/2],[H*0.55,(bodyW-6)/2],[H*0.76,(bodyW+3)/2],
+    [H-15,(bodyW-12)/2],[H-9,(bodyW-30)/2]],y));
+  const sry=rx*0.17;
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" data-top="${top}" data-bot="${bot}"
+    data-cx="${cx}" data-rx="${rx}" data-ry="${sry.toFixed(1)}" data-prof="${prof}">
     <defs>
       <clipPath id="clip${idx}"><path d="${path}"/></clipPath>
       <clipPath id="wclip${idx}"><rect class="waterrect" id="wrect${idx}" x="0" y="${H}" width="${W}" height="0"/></clipPath>
@@ -614,16 +687,12 @@ function jugSVG(idx,cap){
     <g clip-path="url(#clip${idx})"><g clip-path="url(#wclip${idx})">${bubbles}</g></g>
     <g clip-path="url(#clip${idx})">
       <g class="surfg" id="surfg${idx}" style="transform:translateY(${H}px);opacity:0">
-        <g class="wavedrift rev" style="--lam:${lam}px;--wd:5.2s;transform-origin:0 0">
-          <path d="${wavePath(w2,lam,2)}" fill="var(--water-hi)" fill-opacity=".5" transform="translate(-${lam} 2)"/>
-        </g>
-        <g class="wavedrift" style="--lam:${lam}px;--wd:4.2s">
-          <path d="${wavePath(w2,lam,2.6)}" fill="var(--foam)" fill-opacity=".85" transform="translate(-${lam} 0)"/>
-        </g>
+        ${surfaceSVG(idx,cx,rx,sry,lam)}
       </g>
     </g>
     <path d="M ${bx+12} 32 Q ${bx+6} ${Math.round(H*0.55)} ${bx+13} ${H-24}"
       fill="none" stroke="rgba(255,255,255,.45)" stroke-width="3" stroke-linecap="round"/>
+    <path class="rimback" d="M ${bx+15} 13 A ${mrx.toFixed(1)} ${mry} 0 0 1 ${x2-8} 15"/>
     <path class="glassbody" d="${path}"/>
     <text class="etch" x="${bx+bodyW/2}" y="${Math.round(H*0.60)}" text-anchor="middle" font-size="${fs}">${cap} ${UNIT.water}</text>
   </svg>`;
@@ -674,7 +743,6 @@ function glassSVG(idx,cap){
       ${(g.cx-g.rimR*0.34).toFixed(1)} ${g.by-10}`;
   const fs=Math.max(14,Math.round(g.bowlW*0.24));
   const lam=Math.max(24,Math.round(g.bowlW/2));
-  const w2=Math.round(2*g.belly)+2*lam;
   /* Only the horizontal placing and the stagger are fixed here. How far a
      tear falls is not knowable until a pour happens, so runLegs writes
      --ls and --lg. */
@@ -686,8 +754,22 @@ function glassSVG(idx,cap){
       +(0.45+k*0.16+(idx%3)*0.05).toFixed(2)+'s"/>';
   }
   /* The band stops at the bottom of the bowl: the jug's band would pour
-     wine down into the stem. */
-  return `<svg width="${g.W}" height="${g.H}" viewBox="0 0 ${g.W} ${g.H}" data-top="${g.rimY+2}" data-bot="${g.by-3}">
+     wine down into the stem. The bowl is the vessel whose width changes
+     most as the level moves, so its profile is measured off the very
+     cubic the outline is drawn with rather than guessed at. */
+  const byz=(t,p0,p1,p2,p3)=>{const u=1-t;return u*u*u*p0+3*u*u*t*p1+3*u*t*t*p2+t*t*t*p3;};
+  const top=g.rimY+g.ry+2,bot=g.by-3;
+  const{rx,prof}=bandProfile(top,bot,y=>{
+    let lo=0,hi=1;
+    for(let k=0;k<24;k++){
+      const m=(lo+hi)/2;
+      if(byz(m,g.rimY,g.rimY+g.bowlH*0.36,g.rimY+g.bowlH*0.74,g.by)<y)lo=m;else hi=m;
+    }
+    return Math.max(3,g.cx-byz((lo+hi)/2,g.cx-g.rimR,g.cx-g.belly,g.cx-g.belly*0.90,g.cx-n));
+  });
+  const sry=rx*0.17;
+  return `<svg width="${g.W}" height="${g.H}" viewBox="0 0 ${g.W} ${g.H}" data-top="${top}" data-bot="${bot}"
+    data-cx="${g.cx}" data-rx="${rx}" data-ry="${sry.toFixed(1)}" data-prof="${prof}">
     <defs>
       <clipPath id="clip${idx}"><path d="${bowl}"/></clipPath>
       <clipPath id="wclip${idx}"><rect class="waterrect" id="wrect${idx}" x="0" y="${g.H}" width="${g.W}" height="0"/></clipPath>
@@ -703,12 +785,7 @@ function glassSVG(idx,cap){
       x="0" y="${g.H}" width="${g.W}" height="0" fill="url(#wg${idx})"/>
     <g clip-path="url(#clip${idx})">
       <g class="surfg" id="surfg${idx}" style="transform:translateY(${g.H}px);opacity:0">
-        <g class="wavedrift rev" style="--lam:${lam}px;--wd:5.2s;transform-origin:0 0">
-          <path d="${wavePath(w2,lam,2)}" fill="var(--water-hi)" fill-opacity=".5" transform="translate(-${lam} 2)"/>
-        </g>
-        <g class="wavedrift" style="--lam:${lam}px;--wd:4.2s">
-          <path d="${wavePath(w2,lam,2.6)}" fill="var(--foam)" fill-opacity=".85" transform="translate(-${lam} 0)"/>
-        </g>
+        ${surfaceSVG(idx,g.cx,rx,sry,lam)}
       </g>
       <g class="legsg" id="legsg${idx}" style="transform:translateY(${g.H}px)">${legs}</g>
     </g>
@@ -747,8 +824,10 @@ function steinGeom(cap,maxCap){
 }
 /* The top of the head, lumpy rather than level: a straight edge reads as
    a lid. Drawn in the surface group's own coordinates, where y=0 is the
-   beer line and the foam stands above it. */
-function foamPath(x0,x1,hh){
+   beer line and the foam stands above it. The underside is the near half
+   of the surface ellipse, not a line: the head sits on the beer, so it
+   hangs down in the middle exactly as far as the beer does. */
+function foamPath(x0,x1,hh,cx,rx,ry){
   const n=4,step=(x1-x0)/n;
   let d='M '+x0+' 0 L '+x0+' '+(-hh*0.62).toFixed(1);
   for(let k=0;k<n;k++){
@@ -758,7 +837,8 @@ function foamPath(x0,x1,hh){
       +' Q '+(sx+step*0.76).toFixed(1)+' '+(-hh*(k%2?0.58:0.72)).toFixed(1)
       +' '+(sx+step).toFixed(1)+' '+(-hh*0.80).toFixed(1);
   }
-  d+=' L '+x1+' 0 Z';
+  d+=' L '+x1+' 0 L '+(cx+rx).toFixed(1)+' 0'
+    +' A '+rx.toFixed(1)+' '+ry.toFixed(1)+' 0 0 1 '+(cx-rx).toFixed(1)+' 0 Z';
   return d;
 }
 function steinSVG(idx,cap){
@@ -791,7 +871,6 @@ function steinSVG(idx,cap){
   const shine=`M ${bx+12} ${rimY+26} Q ${bx+6} ${Math.round(rimY+wall*0.55)} ${bx+14} ${baseY-26}`;
   const fs=Math.max(17,Math.round(H*0.12));
   const lam=Math.max(24,Math.round(bodyW/2));
-  const w2=bodyW+2*lam;
   let bubbles='';
   for(let k=0;k<4;k++){
     const cx=bx+12+((idx*37+k*53)%Math.max(12,bodyW-24));
@@ -831,13 +910,20 @@ function steinSVG(idx,cap){
         +'" fill="rgba(255,255,255,.06)" stroke="rgba(255,255,255,.19)" stroke-width="1.5"/>';
   }
   const hh=g.head;
+  const cx=bx+bodyW/2,bandTop=rimY+hh+6,bandBot=baseY-3;
+  const{rx,prof}=bandProfile(bandTop,bandBot,y=>{
+    const t=Math.max(0,Math.min(1,(y-rimY)/wall));
+    return Math.max(4,(bodyW-2*taper*t)/2-Math.max(0,y-(baseY-12))*0.9);
+  });
+  const sry=rx*0.17;
   let holes='';
   for(let k=0;k<5;k++){
     const hx=(bx+8+((idx*23+k*41)%Math.max(12,bodyW-16))).toFixed(1);
     holes+='<circle cx="'+hx+'" cy="'+(-hh*(0.28+0.14*(k%3))).toFixed(1)+'" r="'
       +(1.5+(k%3)*0.5).toFixed(1)+'" fill="var(--water-lo)" fill-opacity=".16"/>';
   }
-  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" data-top="${rimY+hh+6}" data-bot="${baseY-3}">
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" data-top="${bandTop}" data-bot="${bandBot}"
+    data-cx="${cx}" data-rx="${rx}" data-ry="${sry.toFixed(1)}" data-prof="${prof}">
     <defs>
       <clipPath id="clip${idx}"><path d="${body}"/></clipPath>
       <clipPath id="wclip${idx}"><rect class="waterrect" id="wrect${idx}" x="0" y="${H}" width="${W}" height="0"/></clipPath>
@@ -853,14 +939,9 @@ function steinSVG(idx,cap){
     <g clip-path="url(#clip${idx})"><g clip-path="url(#wclip${idx})">${bubbles}</g></g>
     <g clip-path="url(#clip${idx})">
       <g class="surfg" id="surfg${idx}" style="transform:translateY(${H}px);opacity:0">
-        <g class="wavedrift rev" style="--lam:${lam}px;--wd:5.2s;transform-origin:0 0">
-          <path d="${wavePath(w2,lam,2)}" fill="var(--water-hi)" fill-opacity=".5" transform="translate(-${lam} 2)"/>
-        </g>
-        <g class="wavedrift" style="--lam:${lam}px;--wd:4.2s">
-          <path d="${wavePath(w2,lam,2.6)}" fill="var(--water-hi)" fill-opacity=".55" transform="translate(-${lam} 0)"/>
-        </g>
+        ${surfaceSVG(idx,cx,rx,sry,lam)}
         <g class="headg" id="headg${idx}">
-          <path d="${foamPath(bx-3,x2+3,hh)}" fill="var(--foam)"/>
+          <path d="${foamPath(bx-3,x2+3,hh,cx,rx,sry)}" fill="var(--foam)"/>
           ${holes}
         </g>
       </g>
@@ -909,20 +990,38 @@ function fitJugs(){
 }
 window.addEventListener('resize',fitJugs);
 
+/* How wide the vessel is at height y, from the profile it published:
+   1 at its widest, and as little as a tenth of that at the bottom of a
+   wine glass. */
+function widthAt(svg,y){
+  const p=(svg.dataset.prof||'1').split(',').map(Number);
+  if(p.length<2)return p[0]||1;
+  const topY=+svg.dataset.top,botY=+svg.dataset.bot;
+  const t=Math.max(0,Math.min(1,(y-topY)/(botY-topY)))*(p.length-1);
+  const k=Math.min(p.length-2,Math.floor(t));
+  return p[k]+(p[k+1]-p[k])*(t-k);
+}
 function render(){
   caps.forEach((cap,i)=>{
     const svg=document.querySelector('#jug'+i+' svg');
     const topY=+svg.dataset.top,botY=+svg.dataset.bot,usable=botY-topY;
     const h=(state[i]/cap)*usable;
     const y=botY-h;
+    /* The liquid line is the middle of the surface ellipse, so the body
+       of the liquid starts one half-ellipse lower: the surface group
+       fills the two corners the near half of the arc leaves standing.
+       The group is drawn at the vessel's widest and scaled to the width
+       it actually has here, which drags the sag along with it - a narrow
+       bowl gets a shallow arc, as it should. */
+    const p=widthAt(svg,y),cx=+svg.dataset.cx||0,sag=(+svg.dataset.ry||0)*p;
     const w=document.getElementById('water'+i);
-    w.setAttribute('y',y);
-    w.setAttribute('height',h);
+    w.setAttribute('y',y+sag);
+    w.setAttribute('height',Math.max(0,botY-y-sag));
     const wr=document.getElementById('wrect'+i);
     wr.setAttribute('y',y);
     wr.setAttribute('height',h);
     const sg=document.getElementById('surfg'+i);
-    sg.style.transform='translateY('+y+'px)';
+    sg.style.transform='translate('+(cx*(1-p)).toFixed(2)+'px,'+y+'px) scale('+p.toFixed(3)+')';
     sg.style.opacity=state[i]>0?1:0;
     document.getElementById('amt'+i).textContent=state[i]+' '+UNIT[skin];
     const j=document.getElementById('jug'+i);
