@@ -825,11 +825,14 @@ function glassSVG(idx,cap){
   const lam=Math.max(24,Math.round(g.bowlW/2));
   /* Only the horizontal placing and the stagger are fixed here. How far a
      tear falls is not knowable until a pour happens, so runLegs writes
-     --ls and --lg. */
+     --ls and --lg. Each tear hangs ABOVE its own origin: what runLegs
+     parks at the wine is the tear's tail, and a tear must never be seen
+     below the surface - it is on the inside of the glass, and the wine
+     takes it. */
   let legs='';
   for(let k=0;k<3;k++){
     const lx=(g.cx-g.rimR*0.55+(g.rimR*1.1/2)*k+((idx*7+k*11)%9)).toFixed(1);
-    legs+='<line class="leg" x1="'+lx+'" y1="0" x2="'+lx+'" y2="13" stroke="var(--foam)"'
+    legs+='<line class="leg" x1="'+lx+'" y1="-13" x2="'+lx+'" y2="0" stroke="var(--foam)"'
       +' stroke-width="2" stroke-linecap="round" style="--ld:'
       +(0.45+k*0.16+(idx%3)*0.05).toFixed(2)+'s"/>';
   }
@@ -1195,10 +1198,15 @@ function runLegs(i,was){
   const band=y(state[i])-y(was);
   lg.classList.remove('legs');
   if(band<MIN_BAND)return;
-  /* The group parks at the new wine line and the tears fall to it, so the
-     band is the whole of their travel. No transition on legsg: it has to
-     be in place before the run starts, not slide there with the level. */
-  lg.style.transform='translateY('+y(state[i])+'px)';
+  /* The group parks at the top of the new surface - not at the line the
+     level maths gives, which is the middle of the surface ellipse - and
+     the tears fall to it, so the band is the whole of their travel. A
+     tear that ended at the line would hang half an ellipse into the wine,
+     and a tear on the inside of the glass is taken by the wine the moment
+     it reaches it. No transition on legsg: it has to be in place before
+     the run starts, not slide there with the level. */
+  const rest=y(state[i])-(+svg.dataset.ry||0)*widthAt(svg,y(state[i]));
+  lg.style.transform='translateY('+rest.toFixed(1)+'px)';
   const secs=Math.min(LEG_MAX,Math.max(LEG_MIN,band/LEG_SPEED));
   lg.querySelectorAll('.leg').forEach((l,k)=>{
     l.style.setProperty('--ls',band.toFixed(1)+'px');
