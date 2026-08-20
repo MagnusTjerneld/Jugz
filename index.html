@@ -739,8 +739,9 @@ function steinGeom(cap,maxCap){
   const baseY=H-16;                       /* the inside of the base      */
   const taper=Math.round(bodyW*0.05);     /* the walls draw in a little  */
   const head=Math.round(12+r*9);          /* the foam head, at rest      */
-  const W=bodyW+40;                       /* room for the handle         */
-  return {r,bodyW,H,rimY,ry,bx,x2,baseY,taper,head,W,rimR:bodyW/2};
+  const proj=Math.round(bodyW*0.36);      /* how far the handle reaches  */
+  const W=bodyW+Math.round(bodyW*0.30)+18;
+  return {r,bodyW,H,rimY,ry,bx,x2,baseY,taper,head,proj,W,rimR:bodyW/2};
 }
 /* The top of the head, lumpy rather than level: a straight edge reads as
    a lid. Drawn in the surface group's own coordinates, where y=0 is the
@@ -760,7 +761,7 @@ function foamPath(x0,x1,hh){
 }
 function steinSVG(idx,cap){
   const g=steinGeom(cap,Math.max(...caps));
-  const {bx,x2,rimY,ry,baseY,taper,bodyW,H,W,rimR}=g;
+  const {bx,x2,rimY,ry,baseY,taper,bodyW,H,W,rimR,proj}=g;
   const body=`M ${bx} ${rimY}
     L ${bx+taper} ${baseY-12}
     Q ${bx+taper} ${baseY} ${bx+taper+12} ${baseY}
@@ -773,10 +774,12 @@ function steinSVG(idx,cap){
   const rimBack=`M ${bx} ${rimY} A ${rimR} ${ry} 0 0 1 ${x2} ${rimY}`;
   const wall=baseY-rimY;
   /* A stein is carried by the fist, so the handle is a wide D standing
-     off the wall - not the thumb loop a jug gets. */
-  const handle=`M ${x2-4} ${Math.round(rimY+wall*0.15)}
-    C ${x2+24} ${Math.round(rimY+wall*0.17)} ${x2+26} ${Math.round(rimY+wall*0.34)} ${x2+25} ${Math.round(rimY+wall*0.46)}
-    C ${x2+24} ${Math.round(rimY+wall*0.58)} ${x2+18} ${Math.round(rimY+wall*0.68)} ${x2-6} ${Math.round(rimY+wall*0.70)}`;
+     well off the wall - not the thumb loop a jug gets. It is also short
+     and sits low: it grips the bottom half of the mug, nowhere near the
+     rim, which is what keeps it from reading as a jug handle. */
+  const hy1=Math.round(rimY+wall*0.36),hy2=Math.round(rimY+wall*0.76);
+  const handle=`M ${x2-5} ${hy1}
+    C ${x2+proj} ${hy1-4} ${x2+proj} ${hy2+4} ${x2-5} ${hy2}`;
   const shine=`M ${bx+12} ${rimY+26} Q ${bx+6} ${Math.round(rimY+wall*0.55)} ${bx+14} ${baseY-26}`;
   const fs=Math.max(17,Math.round(H*0.12));
   const lam=Math.max(24,Math.round(bodyW/2));
@@ -789,23 +792,32 @@ function steinSVG(idx,cap){
       +'" fill="rgba(255,255,255,.4)" style="--bh:'+H+'px;--bd:'+(4.5+k*1.6+idx*0.7).toFixed(1)+'s;--bdl:'+(k*1.3).toFixed(1)+'s"/>';
   }
   /* The pressed dimples of a Masskrug, drawn over the beer as well as
-     over the empty glass: they are the wall, not a decoration on it. */
+     over the empty glass: they are the wall, not a decoration on it.
+     Big and close-packed, three to a row with the offset row running off
+     both edges - the half dimples the silhouette cuts are what make the
+     wall read as curved rather than as a panel of dots.
+
+     The rows are laid out to a count, not to a fixed pitch: even the
+     smallest mug is worth three rows, and one row is always given up to
+     the capacity mark, so four is where the count starts. */
   let dimples='';
-  const dr=Math.max(6,Math.round(bodyW*0.12)),gap=Math.round(dr*2.7);
-  const rows=Math.max(2,Math.floor((wall-40)/gap));
-  const etchY=Math.round(rimY+wall*0.66);
-  for(let ri=0;ri<rows;ri++){
-    const dy=rimY+34+ri*gap;
-    /* The band the capacity is etched on stays smooth, the way the fill
-       mark on a real Masskrug does. Dimpling straight through the number
-       is what makes it hard to read. */
-    if(Math.abs(dy-etchY)<fs*0.8)continue;
-    /* Three across, then two set between them: a straight grid reads as
-       polka dots, the offset row reads as pressed glass. */
-    const at=(ri%2)?[0.34,0.66]:[0.19,0.5,0.81];
+  const top=rimY+26,bot=baseY-20,avail=bot-top,drMax=bodyW*0.16;
+  const rowN=Math.max(4,Math.round(avail/(2.1*drMax))+1);
+  const gap=Math.min(2.1*drMax,avail/(rowN-1)),dr=Math.min(drMax,gap/2.1);
+  const start=top+(avail-(rowN-1)*gap)/2;
+  /* The band the capacity is etched on stays smooth, the way the fill
+     mark on a real Masskrug does - dimpling straight through the number
+     is what makes it hard to read. The number takes a whole row rather
+     than a slice of one, so the gap it sits in looks deliberate. */
+  const skip=Math.max(1,Math.round((rowN-1)*0.62));
+  const etchY=Math.round(start+skip*gap+fs*0.34);
+  for(let ri=0;ri<rowN;ri++){
+    if(ri===skip)continue;
+    const dy=(start+ri*gap).toFixed(1);
+    const at=(ri%2)?[0,1/3,2/3,1]:[1/6,0.5,5/6];
     for(const f of at)
-      dimples+='<ellipse cx="'+(bx+bodyW*f).toFixed(1)+'" cy="'+dy+'" rx="'+dr+'" ry="'+(dr*0.88).toFixed(1)
-        +'" fill="rgba(255,255,255,.05)" stroke="rgba(255,255,255,.15)" stroke-width="1.4"/>';
+      dimples+='<ellipse cx="'+(bx+bodyW*f).toFixed(1)+'" cy="'+dy+'" rx="'+dr.toFixed(1)+'" ry="'+(dr*0.94).toFixed(1)
+        +'" fill="rgba(255,255,255,.06)" stroke="rgba(255,255,255,.19)" stroke-width="1.5"/>';
   }
   const hh=g.head;
   let holes='';
