@@ -51,7 +51,8 @@
     --done:#6FE7D4;        /* cleared level, in the picker */
     --glass:rgba(240,238,255,.60);  /* vessel outline */
     --tint:rgba(243,239,255,.07);   /* glass body */
-    --etch:rgba(243,239,255,.55);   /* capacity engraved on the vessel */
+    --etch:rgba(243,239,255,.62);   /* capacity engraved on the vessel */
+    --etch-dark:rgba(64,58,52,.72); /* ... and how hard the liquid bites into it */
     /* The live amount, in the colour of the liquid itself. It shares a
        line of sight with the etched capacity, and two numbers in the same
        lavender white were being read for each other. */
@@ -88,7 +89,11 @@
     --done:#F0A8B8;
     --glass:rgba(255,244,248,.55);
     --tint:rgba(255,240,246,.06);
-    --etch:rgba(255,240,246,.55);
+    --etch:rgba(255,240,246,.62);
+    /* Red wine is the one dark liquid of the three: darkening the mark
+       into it would push it towards the backdrop rather than away, so
+       the multiply copy is barely there. */
+    --etch-dark:rgba(60,40,48,.22);
     /* Ruby again disappears into the burgundy, so the amount borrows the
        meniscus rose, same as --done. */
     --amount:#F0A8B8;
@@ -132,7 +137,8 @@
     --done:#F5C242;
     --glass:rgba(255,248,235,.62);
     --tint:rgba(255,245,225,.07);
-    --etch:rgba(255,245,225,.55);
+    --etch:rgba(255,245,225,.62);
+    --etch-dark:rgba(58,48,38,.78);
     --amount:#F5C242;
     --on-primary:#3A2205;
     --panel:rgba(255,255,255,.06);
@@ -228,7 +234,24 @@
   .jug.sel .glasshandle,.jug.sel .stemshape,.jug.sel .rimback,.jug.sel .glassband{stroke:#FFFFFF}
   .jug.hintflash .glassbody{stroke:var(--hint);stroke-width:3.5;filter:drop-shadow(0 0 10px rgba(255,180,88,.8));filter:drop-shadow(0 0 10px color-mix(in srgb,var(--hint) 80%,transparent))}
   .jug.hintflash .glasshandle,.jug.hintflash .stemshape,.jug.hintflash .rimback,.jug.hintflash .glassband{stroke:var(--hint)}
+  /* The capacity is etched on the glass, and the glass has two quite
+     different things behind it: dark air above the liquid, and the
+     liquid itself below - gold beer, turquoise water, or a white head of
+     foam that swallowed the number whole. The mark is drawn twice (see
+     etchSVG). The pale copy is the mark against the dark, and it is the
+     one that was always there. The second copy multiplies, which darkens
+     whatever is under it while keeping that colour's own hue, so the
+     number reads as cut into the liquid rather than laid on top of it.
+
+     The multiply copy is clipped to the liquid (eclip, the head included),
+     because that is exactly where the backdrop is light. Left unclipped
+     it dimmed the pale copy too, and the two cancelled almost exactly
+     over beer and over water - measured contrast of 1 and 2 out of 255,
+     which is another way of saying invisible. Clipped, each copy owns
+     the half of the vessel it is right for, and the mark flips at the
+     liquid line the way an etched mark really does. */
   .jug .etch{fill:var(--etch);font-family:'Fredoka',sans-serif;font-weight:600;pointer-events:none}
+  .jug .etchmul{fill:var(--etch-dark);mix-blend-mode:multiply}
   .jug.deny{animation:shake .3s}
   @keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
   .waterrect{transition:y .5s cubic-bezier(.4,0,.2,1),height .5s cubic-bezier(.4,0,.2,1)}
@@ -270,6 +293,17 @@
   .headg{transform-box:fill-box;transform-origin:50% 100%}
   .headg.surge{animation:head 1.6s cubic-bezier(.25,.8,.3,1) both}
   @keyframes head{from{transform:scaleY(1.65)}to{transform:scaleY(1)}}
+  /* A head of beer is all but static, so what it does is breathe: one
+     slow rise and settle a minute, and the bubbles caught in it fading
+     at their own unrelated pace. It rides its own group inside .headg
+     rather than on it, because that group is where the surge lives and
+     two animations cannot share one transform. Anything faster than this
+     reads as fizz, which is the wrong drink - and the numbers are chosen
+     so that no two vessels breathe in step. */
+  .headb{transform-box:fill-box;transform-origin:50% 100%;animation:headbreath var(--hb,36s) ease-in-out infinite}
+  @keyframes headbreath{50%{transform:scaleY(1.05)}}
+  .foamhole{animation:foamhole var(--fd,28s) ease-in-out var(--fdl,0s) infinite}
+  @keyframes foamhole{50%{opacity:.3;transform:translateY(-1.2px)}}
 
   .controls{width:100%;max-width:520px;display:flex;gap:8px;margin-top:8px}
   button{
@@ -582,12 +616,19 @@ function wavePath(w2,lam,amp,depth){
    half leaves standing, down to the level where the body rect takes
    over, so the liquid's own top edge follows the arc rather than the
    line. The drifting waves are clipped to the ellipse, so what used to
-   be a straight foam band now ripples inside the surface. */
+   be a straight foam band now ripples inside the surface.
+
+   The wings run a unit PAST the top of the body rect on purpose. Two
+   shapes that merely meet along a line each anti-alias their own edge,
+   and two half-covered pixels do not add up to one covered pixel: the
+   backdrop showed through as a dark hairline straight across the liquid
+   at exactly the level of the surface. The surface group is painted
+   after the rect, so the overlap costs nothing but the seam. */
 function surfaceSVG(idx,cx,rx,ry,lam){
   const w2=Math.round(2*rx)+2*lam;
   const x0=(cx-rx).toFixed(1),x1=(cx+rx).toFixed(1),R=rx.toFixed(1),Y=ry.toFixed(1);
-  const out=(cx+rx*1.35).toFixed(1),in_=(cx-rx*1.35).toFixed(1);
-  const wing=`M ${in_} ${Y} L ${in_} 0 L ${x0} 0 A ${R} ${Y} 0 0 0 ${x1} 0 L ${out} 0 L ${out} ${Y} Z`;
+  const out=(cx+rx*1.35).toFixed(1),in_=(cx-rx*1.35).toFixed(1),B=(ry+1.2).toFixed(1);
+  const wing=`M ${in_} ${B} L ${in_} 0 L ${x0} 0 A ${R} ${Y} 0 0 0 ${x1} 0 L ${out} 0 L ${out} ${B} Z`;
   const near=`M ${x1} 0 A ${R} ${Y} 0 0 1 ${x0} 0`;
   const far=`M ${x0} 0 A ${R} ${Y} 0 0 1 ${x1} 0`;
   const wx=(cx-rx-lam).toFixed(1);
@@ -604,6 +645,39 @@ function surfaceSVG(idx,cx,rx,ry,lam){
         </g>
         <path d="${far}" fill="none" stroke="var(--foam)" stroke-opacity=".28" stroke-width="1.6"/>
         <path d="${near}" fill="none" stroke="var(--foam)" stroke-opacity=".7" stroke-width="2"/>`;
+}
+/* The capacity mark, twice over: see the .etch rules for why. Both copies
+   are the same glyphs in the same place, so nothing about the layout
+   changes - the second one only darkens, and only where the liquid is
+   behind it. */
+function etchSVG(idx,x,y,fs,label){
+  return `<text class="etch" x="${x}" y="${y}" text-anchor="middle" font-size="${fs}">${label}</text>
+    <text class="etch etchmul" clip-path="url(#eclip${idx})" x="${x}" y="${y}" text-anchor="middle" font-size="${fs}">${label}</text>`;
+}
+/* The clip that decides which copy of the mark applies where: everything
+   the liquid actually covers. Not a line across the glass - the same
+   shapes the liquid is drawn with, so the mark changes over exactly the
+   pixels the liquid is behind. Three pieces, matching the three the
+   liquid is painted with: the body below the line (a rect, sharing the
+   waterrect class so it transitions in step), the surface ellipse that
+   stands above the line, and on a stein the head, whose lumpy top edge
+   is the real boundary there.
+
+   The two curved pieces are drawn in the surface group's coordinates, so
+   render() gives them the transform it gives the surface group. They
+   carry it one by one rather than in a <g>, because a clipPath only
+   takes shapes as children.
+
+   (One thing this does not follow: the head's surge after a pour, which
+   is a CSS animation on the drawn foam and cannot be on a clip child
+   that already carries a transform. For a second or so a stein poured
+   into has a little more foam than the clip knows about.) */
+function eclipSVG(idx,W,H,cx,rx,ry,head){
+  return `<clipPath id="eclip${idx}">
+      <rect class="waterrect" id="erect${idx}" x="0" y="${H}" width="${W}" height="0"/>
+      <ellipse id="eell${idx}" cx="${cx}" cy="0" rx="${rx.toFixed(1)}" ry="${ry.toFixed(1)}"/>
+      ${head?`<path id="efoam${idx}" d="${head}"/>`:''}
+    </clipPath>`;
 }
 /* Nine samples of the inside half-width of the vessel, evenly spaced down
    the band the liquid moves through and given relative to the widest of
@@ -680,6 +754,7 @@ function jugSVG(idx,cap){
            to be visible through the opening, not stop below it. -->
       <clipPath id="clip${idx}"><path d="${path}"/><ellipse cx="${((bx+15)+(x2-8))/2}" cy="14" rx="${mrx.toFixed(1)}" ry="${mry}"/></clipPath>
       <clipPath id="wclip${idx}"><rect class="waterrect" id="wrect${idx}" x="0" y="${H}" width="${W}" height="0"/></clipPath>
+      ${eclipSVG(idx,W,H,cx,rx,sry)}
       <linearGradient id="wg${idx}" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0" stop-color="var(--water-hi)"/>
         <stop offset="1" stop-color="var(--water-lo)"/>
@@ -699,7 +774,7 @@ function jugSVG(idx,cap){
       fill="none" stroke="rgba(255,255,255,.45)" stroke-width="3" stroke-linecap="round"/>
     <path class="rimback" d="M ${bx+15} 13 A ${mrx.toFixed(1)} ${mry} 0 0 1 ${x2-8} 15"/>
     <path class="glassbody" d="${path}"/>
-    <text class="etch" x="${bx+bodyW/2}" y="${Math.round(H*0.60)}" text-anchor="middle" font-size="${fs}">${cap} ${UNIT.water}</text>
+    ${etchSVG(idx,bx+bodyW/2,Math.round(H*0.60),fs,cap+' '+UNIT.water)}
   </svg>`;
 }
 
@@ -780,6 +855,7 @@ function glassSVG(idx,cap){
            half of the wine is cut off at the rim. -->
       <clipPath id="clip${idx}"><path d="${bowl}"/><ellipse cx="${g.cx}" cy="${g.rimY}" rx="${g.rimR}" ry="${g.ry}"/></clipPath>
       <clipPath id="wclip${idx}"><rect class="waterrect" id="wrect${idx}" x="0" y="${g.H}" width="${g.W}" height="0"/></clipPath>
+      ${eclipSVG(idx,g.W,g.H,g.cx,rx,sry)}
       <linearGradient id="wg${idx}" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0" stop-color="var(--water-hi)"/>
         <stop offset="1" stop-color="var(--water-lo)"/>
@@ -799,7 +875,7 @@ function glassSVG(idx,cap){
     <path d="${shine}" fill="none" stroke="rgba(255,255,255,.40)" stroke-width="3" stroke-linecap="round"/>
     <path class="rimback" d="${rimBack}"/>
     <path class="glassbody" d="${bowl}"/>
-    <text class="etch" x="${g.cx}" y="${Math.round(g.rimY+g.bowlH*0.62)}" text-anchor="middle" font-size="${fs}">${cap} ${UNIT.wine}</text>
+    ${etchSVG(idx,g.cx,Math.round(g.rimY+g.bowlH*0.62),fs,cap+' '+UNIT.wine)}
   </svg>`;
 }
 /* ---- Beerz: the German stein ----
@@ -926,8 +1002,9 @@ function steinSVG(idx,cap){
   let holes='';
   for(let k=0;k<5;k++){
     const hx=(bx+8+((idx*23+k*41)%Math.max(12,bodyW-16))).toFixed(1);
-    holes+='<circle cx="'+hx+'" cy="'+(-hh*(0.28+0.14*(k%3))).toFixed(1)+'" r="'
-      +(1.5+(k%3)*0.5).toFixed(1)+'" fill="var(--water-lo)" fill-opacity=".16"/>';
+    holes+='<circle class="foamhole" cx="'+hx+'" cy="'+(-hh*(0.28+0.14*(k%3))).toFixed(1)+'" r="'
+      +(1.5+(k%3)*0.5).toFixed(1)+'" fill="var(--water-lo)" fill-opacity=".16"'
+      +' style="--fd:'+(22+k*5.5+idx*2.5).toFixed(1)+'s;--fdl:-'+(k*7+idx*3)+'s"/>';
   }
   return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" data-top="${bandTop}" data-bot="${bandBot}"
     data-cx="${cx}" data-rx="${rx}" data-ry="${sry.toFixed(1)}" data-prof="${prof}">
@@ -936,6 +1013,7 @@ function steinSVG(idx,cap){
            that needs it - foam stands in the mouth of the stein. -->
       <clipPath id="clip${idx}"><path d="${body}"/><ellipse cx="${bx+bodyW/2}" cy="${rimY}" rx="${rimR}" ry="${ry}"/></clipPath>
       <clipPath id="wclip${idx}"><rect class="waterrect" id="wrect${idx}" x="0" y="${H}" width="${W}" height="0"/></clipPath>
+      ${eclipSVG(idx,W,H,cx,rx,sry,foamPath(bx-3,x2+3,hh,cx,rx,sry))}
       <linearGradient id="wg${idx}" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0" stop-color="var(--water-hi)"/>
         <stop offset="1" stop-color="var(--water-lo)"/>
@@ -950,8 +1028,10 @@ function steinSVG(idx,cap){
       <g class="surfg" id="surfg${idx}" style="transform:translateY(${H}px);opacity:0">
         ${surfaceSVG(idx,cx,rx,sry,lam)}
         <g class="headg" id="headg${idx}">
-          <path d="${foamPath(bx-3,x2+3,hh,cx,rx,sry)}" fill="var(--foam)"/>
-          ${holes}
+          <g class="headb" style="--hb:${(38+idx*5).toFixed(1)}s">
+            <path d="${foamPath(bx-3,x2+3,hh,cx,rx,sry)}" fill="var(--foam)"/>
+            ${holes}
+          </g>
         </g>
       </g>
       ${dimples}
@@ -960,7 +1040,7 @@ function steinSVG(idx,cap){
     <path class="rimback" d="${rimBack}"/>
     <path class="glassband" d="${band}"/>
     <path class="glassbody" d="${body}"/>
-    <text class="etch" x="${bx+bodyW/2}" y="${etchY}" text-anchor="middle" font-size="${fs}">${cap} ${UNIT.beer}</text>
+    ${etchSVG(idx,bx+bodyW/2,etchY,fs,cap+' '+UNIT.beer)}
   </svg>`;
 }
 function vesselSVG(idx,cap){
@@ -1029,9 +1109,20 @@ function render(){
     const wr=document.getElementById('wrect'+i);
     wr.setAttribute('y',y);
     wr.setAttribute('height',h);
-    const sg=document.getElementById('surfg'+i);
-    sg.style.transform='translate('+(cx*(1-p)).toFixed(2)+'px,'+y+'px) scale('+p.toFixed(3)+')';
+    /* The body half of the etch clip. What stands above the line - the
+       surface, and the head on a stein - is the two shapes above. */
+    const er=document.getElementById('erect'+i);
+    er.setAttribute('y',y);
+    er.setAttribute('height',Math.max(0,botY-y));
+    const sg=document.getElementById('surfg'+i),tf='translate('+(cx*(1-p)).toFixed(2)+'px,'+y+'px) scale('+p.toFixed(3)+')';
+    sg.style.transform=tf;
     sg.style.opacity=state[i]>0?1:0;
+    /* The curved half of the etch clip is the surface itself, so it takes
+       the surface's own transform. */
+    ['eell','efoam'].forEach(id=>{
+      const el=document.getElementById(id+i);
+      if(el)el.style.transform=tf;
+    });
     document.getElementById('amt'+i).textContent=state[i]+' '+UNIT[skin];
     const j=document.getElementById('jug'+i);
     j.classList.toggle('sel',sel===i);
