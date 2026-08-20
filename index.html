@@ -801,7 +801,9 @@ function steinSVG(idx,cap){
      smallest mug is worth three rows, and one row is always given up to
      the capacity mark, so four is where the count starts. */
   let dimples='';
-  const top=rimY+26,bot=baseY-20,avail=bot-top,drMax=bodyW*0.16;
+  /* The top fifth of the glass stays smooth: a real Masskrug is pressed
+     from below the shoulder down, and it is also where the head sits. */
+  const top=rimY+Math.max(26,Math.round(wall*0.2)),bot=baseY-20,avail=bot-top,drMax=bodyW*0.16;
   const rowN=Math.max(4,Math.round(avail/(2.1*drMax))+1);
   const gap=Math.min(2.1*drMax,avail/(rowN-1)),dr=Math.min(drMax,gap/2.1);
   const start=top+(avail-(rowN-1)*gap)/2;
