@@ -662,10 +662,10 @@ function jugSVG(idx,cap){
   /* data-top/data-bot is the band the liquid moves through, and data-rx
      /-ry/-cx/-prof is the shape of its surface (see surfaceSVG). The jug
      fills nearly to the brim; a wine glass does not, so render() reads
-     both off the SVG instead of hardcoding them. The band now starts a
-     little lower than the mouth, to leave the far side of the surface
-     ellipse somewhere to be. */
-  const cx=bx+bodyW/2,top=24,bot=H-10;
+     both off the SVG instead of hardcoding them. The band starts just
+     below the middle of the mouth, so a full jug reads as filled to
+     just under the brim all the way round rather than to a line. */
+  const cx=bx+bodyW/2,top=20,bot=H-10;
   const{rx,prof}=bandProfile(top,bot,y=>halfLerp([[14,(bodyW-8)/2],[26,(bodyW-4)/2],
     [H*0.32,(bodyW-9)/2],[H*0.55,(bodyW-6)/2],[H*0.76,(bodyW+3)/2],
     [H-15,(bodyW-12)/2],[H-9,(bodyW-30)/2]],y));
@@ -673,7 +673,12 @@ function jugSVG(idx,cap){
   return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" data-top="${top}" data-bot="${bot}"
     data-cx="${cx}" data-rx="${rx}" data-ry="${sry.toFixed(1)}" data-prof="${prof}">
     <defs>
-      <clipPath id="clip${idx}"><path d="${path}"/></clipPath>
+      <!-- The clip is the body PLUS the whole mouth ellipse. The body path
+           can only close along the near half of the mouth, so without the
+           ellipse the far half of the water is cut away and a full jug
+           shows an empty crescent inside its own opening: the liquid has
+           to be visible through the opening, not stop below it. -->
+      <clipPath id="clip${idx}"><path d="${path}"/><ellipse cx="${((bx+15)+(x2-8))/2}" cy="14" rx="${mrx.toFixed(1)}" ry="${mry}"/></clipPath>
       <clipPath id="wclip${idx}"><rect class="waterrect" id="wrect${idx}" x="0" y="${H}" width="${W}" height="0"/></clipPath>
       <linearGradient id="wg${idx}" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0" stop-color="var(--water-hi)"/>
@@ -758,7 +763,7 @@ function glassSVG(idx,cap){
      most as the level moves, so its profile is measured off the very
      cubic the outline is drawn with rather than guessed at. */
   const byz=(t,p0,p1,p2,p3)=>{const u=1-t;return u*u*u*p0+3*u*u*t*p1+3*u*t*t*p2+t*t*t*p3;};
-  const top=g.rimY+g.ry+2,bot=g.by-3;
+  const top=g.rimY+4,bot=g.by-3;
   const{rx,prof}=bandProfile(top,bot,y=>{
     let lo=0,hi=1;
     for(let k=0;k<24;k++){
@@ -771,7 +776,9 @@ function glassSVG(idx,cap){
   return `<svg width="${g.W}" height="${g.H}" viewBox="0 0 ${g.W} ${g.H}" data-top="${top}" data-bot="${bot}"
     data-cx="${g.cx}" data-rx="${rx}" data-ry="${sry.toFixed(1)}" data-prof="${prof}">
     <defs>
-      <clipPath id="clip${idx}"><path d="${bowl}"/></clipPath>
+      <!-- Body plus the whole rim ellipse: see jugSVG. Without it the far
+           half of the wine is cut off at the rim. -->
+      <clipPath id="clip${idx}"><path d="${bowl}"/><ellipse cx="${g.cx}" cy="${g.rimY}" rx="${g.rimR}" ry="${g.ry}"/></clipPath>
       <clipPath id="wclip${idx}"><rect class="waterrect" id="wrect${idx}" x="0" y="${g.H}" width="${g.W}" height="0"/></clipPath>
       <linearGradient id="wg${idx}" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0" stop-color="var(--water-hi)"/>
@@ -925,7 +932,9 @@ function steinSVG(idx,cap){
   return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" data-top="${bandTop}" data-bot="${bandBot}"
     data-cx="${cx}" data-rx="${rx}" data-ry="${sry.toFixed(1)}" data-prof="${prof}">
     <defs>
-      <clipPath id="clip${idx}"><path d="${body}"/></clipPath>
+      <!-- Body plus the whole rim ellipse: see jugSVG. Here it is the head
+           that needs it - foam stands in the mouth of the stein. -->
+      <clipPath id="clip${idx}"><path d="${body}"/><ellipse cx="${bx+bodyW/2}" cy="${rimY}" rx="${rimR}" ry="${ry}"/></clipPath>
       <clipPath id="wclip${idx}"><rect class="waterrect" id="wrect${idx}" x="0" y="${H}" width="${W}" height="0"/></clipPath>
       <linearGradient id="wg${idx}" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0" stop-color="var(--water-hi)"/>
