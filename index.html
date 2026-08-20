@@ -293,6 +293,17 @@
   .headg{transform-box:fill-box;transform-origin:50% 100%}
   .headg.surge{animation:head 1.6s cubic-bezier(.25,.8,.3,1) both}
   @keyframes head{from{transform:scaleY(1.65)}to{transform:scaleY(1)}}
+  /* A head of beer is all but static, so what it does is breathe: one
+     slow rise and settle a minute, and the bubbles caught in it fading
+     at their own unrelated pace. It rides its own group inside .headg
+     rather than on it, because that group is where the surge lives and
+     two animations cannot share one transform. Anything faster than this
+     reads as fizz, which is the wrong drink - and the numbers are chosen
+     so that no two vessels breathe in step. */
+  .headb{transform-box:fill-box;transform-origin:50% 100%;animation:headbreath var(--hb,36s) ease-in-out infinite}
+  @keyframes headbreath{50%{transform:scaleY(1.05)}}
+  .foamhole{animation:foamhole var(--fd,28s) ease-in-out var(--fdl,0s) infinite}
+  @keyframes foamhole{50%{opacity:.3;transform:translateY(-1.2px)}}
 
   .controls{width:100%;max-width:520px;display:flex;gap:8px;margin-top:8px}
   button{
@@ -991,8 +1002,9 @@ function steinSVG(idx,cap){
   let holes='';
   for(let k=0;k<5;k++){
     const hx=(bx+8+((idx*23+k*41)%Math.max(12,bodyW-16))).toFixed(1);
-    holes+='<circle cx="'+hx+'" cy="'+(-hh*(0.28+0.14*(k%3))).toFixed(1)+'" r="'
-      +(1.5+(k%3)*0.5).toFixed(1)+'" fill="var(--water-lo)" fill-opacity=".16"/>';
+    holes+='<circle class="foamhole" cx="'+hx+'" cy="'+(-hh*(0.28+0.14*(k%3))).toFixed(1)+'" r="'
+      +(1.5+(k%3)*0.5).toFixed(1)+'" fill="var(--water-lo)" fill-opacity=".16"'
+      +' style="--fd:'+(22+k*5.5+idx*2.5).toFixed(1)+'s;--fdl:-'+(k*7+idx*3)+'s"/>';
   }
   return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" data-top="${bandTop}" data-bot="${bandBot}"
     data-cx="${cx}" data-rx="${rx}" data-ry="${sry.toFixed(1)}" data-prof="${prof}">
@@ -1016,8 +1028,10 @@ function steinSVG(idx,cap){
       <g class="surfg" id="surfg${idx}" style="transform:translateY(${H}px);opacity:0">
         ${surfaceSVG(idx,cx,rx,sry,lam)}
         <g class="headg" id="headg${idx}">
-          <path d="${foamPath(bx-3,x2+3,hh,cx,rx,sry)}" fill="var(--foam)"/>
-          ${holes}
+          <g class="headb" style="--hb:${(38+idx*5).toFixed(1)}s">
+            <path d="${foamPath(bx-3,x2+3,hh,cx,rx,sry)}" fill="var(--foam)"/>
+            ${holes}
+          </g>
         </g>
       </g>
       ${dimples}
